@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "checks": [
+    "onboarding",
+    "task-create",
+    "T1-win",
+    "optional-T2",
+    "optional-T3",
+    "incremental-total",
+    "refresh-persistence",
+    "day-won",
+    "weekly-grid",
+    "analytics",
+    "template-customization",
+    "weekly-review-persistence",
+    "theme-persistence",
+    "mobile-layout-eight-routes"
+  ],
+  "uncaughtErrors": []
+}

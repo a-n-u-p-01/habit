@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn() { return request.auth != null; }
+  function own(uid) { return signedIn() && request.auth.uid == uid; }
+  function shortText(s,n) { return s is string && s.size() > 0 && s.size() <= n; }
+  function requirement(r) { return r is map && r.id is string && r.label is string && r.unit is string && r.amount is number && r.amount > 0 && r.amount <= 100000; }
+  function at(rows,i) { return rows.size() <= i || requirement(rows[i]); }
+  function level(rows) { return rows is list && rows.size() >= 1 && rows.size() <= 4 && at(rows,0) && at(rows,1) && at(rows,2) && at(rows,3); }
+  function levels(ls) { return ls is map && ls.keys().hasOnly(['t1','t2','t3']) && level(ls.t1) && level(ls.t2) && level(ls.t3); }
+  function weekdays(days) { return days is list && days.size() >= 1 && days.size() <= 7 && days.hasOnly([0,1,2,3,4,5,6]); }
+  function blueprint(d) { return shortText(d.name,80) && d.category in ['Fitness','Study','Mindfulness','Creative','Career','Life'] && weekdays(d.weekdays) && levels(d.levels); }
+  function date(s) { return s is string && s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
+  function checkedAt(rows,checks,i) { return rows.size() <= i || checks.get(rows[i].id,false) == true; }
+  function won(rows,checks) { return checkedAt(rows,checks,0) && checkedAt(rows,checks,1) && checkedAt(rows,checks,2) && checkedAt(rows,checks,3); }
+  function validWin(uid,d) {
+   let p = getAfter(/databases/$(database)/documents/users/$(uid)/progress/$(d.date + '_' + d.taskId)).data;
+   return d.level in [1,2,3] && won(p.snapshot.levels.t1,p.checks) && (d.level < 2 || won(p.snapshot.levels.t2,p.checks)) && (d.level < 3 || won(p.snapshot.levels.t3,p.checks));
+  }
+  match /users/{uid} {
+   allow read,delete: if own(uid);
+   allow create,update: if own(uid) && request.resource.data.keys().hasOnly(['displayName','photoURL','updatedAt']) && request.resource.data.displayName is string && request.resource.data.displayName.size() <= 200 && request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 2000;
+   match /tasks/{id} {
+    allow read,delete: if own(uid);
+    allow create,update: if own(uid) && request.resource.data.id == id && blueprint(request.resource.data) && date(request.resource.data.createdDay) && request.resource.data.active is bool && request.resource.data.scheduleHistory is list && request.resource.data.scheduleHistory.size() <= 10000;
+   }
+   match /progress/{id} {
+    allow read,delete: if own(uid);
+    allow create: if own(uid) && request.resource.data.id == id && id == request.resource.data.date + '_' + request.resource.data.taskId && date(request.resource.data.date) && request.resource.data.checks is map && request.resource.data.scheduled is bool && blueprint(request.resource.data.snapshot) && exists(/databases/$(database)/documents/users/$(uid)/tasks/$(request.resource.data.taskId));
+    allow update: if own(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checks','updatedAt']) && request.resource.data.checks is map;
+   }
+   match /wins/{id} {
+    allow read,delete: if own(uid);
+    allow create,update: if own(uid) && request.resource.data.id == id && date(request.resource.data.date) && id == request.resource.data.date + '_' + request.resource.data.taskId + '_T' + string(request.resource.data.level) && validWin(uid,request.resource.data);
+   }
+   match /templates/{id} {
+    allow read,delete: if own(uid);
+    allow create,update: if own(uid) && request.resource.data.id == id && blueprint(request.resource.data);
+   }
+   match /savedTemplates/{id} {
+    allow read,delete: if own(uid);
+    allow create,update: if own(uid) && request.resource.data.id == id && request.resource.data.templateId == id && request.resource.data.snapshot is map && blueprint(request.resource.data.snapshot);
+   }
+   match /weeklyReviews/{id} {
+    allow read,delete: if own(uid);
+    allow create,update: if own(uid) && request.resource.data.id == id && ((id == 'reminder-preference' && request.resource.data.kind == 'reminderPreference' && request.resource.data.enabled is bool && request.resource.data.time is string && request.resource.data.time.matches('^[0-9]{2}:[0-9]{2}$')) || (date(id) && request.resource.data.weekStart == id && request.resource.data.worked is string && request.resource.data.worked.size() <= 2000 && request.resource.data.hard is string && request.resource.data.hard.size() <= 2000 && request.resource.data.next is string && request.resource.data.next.size() <= 2000));
+   }
+  }
+  match /templates/{id} {
+   allow read: if true;
+   allow create: if signedIn() && request.resource.data.authorId == request.auth.uid && publicTemplate();
+   allow update: if signedIn() && resource.data.authorId == request.auth.uid && request.resource.data.authorId == resource.data.authorId && publicTemplate();
+   allow delete: if signedIn() && resource.data.authorId == request.auth.uid;
+   function publicTemplate() { let d=request.resource.data; return d.keys().hasOnly(['name','description','category','levels','weekdays','authorId','authorName','published','updatedAt']) && blueprint(d) && d.published == true && shortText(d.authorName,200) && d.description is string && d.description.size() <= 600 && d.updatedAt is number; }
+  }
+  match /reviews/{id} {
+   allow read: if true;
+   allow create,update: if signedIn() && request.resource.data.keys().hasOnly(['templateId','authorId','authorName','rating','text','recommend','updatedAt']) && request.resource.data.authorId == request.auth.uid && id == request.resource.data.templateId + '_' + request.auth.uid && (!exists(/databases/$(database)/documents/reviews/$(id)) || (resource.data.authorId == request.auth.uid && resource.data.templateId == request.resource.data.templateId)) && exists(/databases/$(database)/documents/templates/$(request.resource.data.templateId)) && request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5 && shortText(request.resource.data.text,1000) && shortText(request.resource.data.authorName,200) && request.resource.data.recommend is bool && request.resource.data.updatedAt is number;
+   allow delete: if signedIn() && resource.data.authorId == request.auth.uid;
+  }
+  match /templateUsages/{id} {
+   allow read: if true;
+   allow create: if signedIn() && request.resource.data.keys().hasOnly(['templateId','userId']) && request.resource.data.userId == request.auth.uid && id == request.resource.data.templateId + '_' + request.auth.uid && exists(/databases/$(database)/documents/templates/$(request.resource.data.templateId));
+   allow update: if signedIn() && resource.data.userId == request.auth.uid && request.resource.data == resource.data;
+   allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+  }
+  match /{document=**} { allow read,write: if false; }
+ }
+}
