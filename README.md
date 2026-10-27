@@ -180,3 +180,21 @@ public/landscape.jpg is downloaded from https://images.unsplash.com/photo-146482
 Source modules: App.jsx (router/shell/onboarding), components.jsx (shared UI), screens/Today.jsx, Tasks.jsx, Insights.jsx, Templates.jsx, Account.jsx, store.jsx (auth/data provider), domain.js (pure rules and calculations), serialization.js (Firestore-safe map conversion), firebase.js (client configuration), styles.css.
 
 To rerun the browser test locally, first install Chromium with npx playwright install chromium and keep npm run preview -- --port 4173 running in a second terminal after npm run build; then npm run test:browser.
+
+## Mobile readability update
+
+Phone layouts now use 14–16px reading text, 16px form inputs to avoid iOS focus zoom, 44px minimum icon targets and 48px primary buttons. Single-column panels and template cards replace compressed columns. Requirement editors put the activity above amount/unit, and phone task actions have their own row. Headings scale fluidly; the hero is shorter to bring tasks closer to the first screen. Bottom navigation supports safe-area insets, and browser zoom remains enabled. Desktop styles and all Firebase logic/rules are unchanged.
+
+For an existing deployment, the functional UI change is src/styles.css only. Replace that file, run npm run build, and redeploy the generated assets. Do not replace your existing Firebase configuration or database to apply this visual update.
+
+Additional test: npm run test:mobile (with the preview server running on port 4173) checks 12 routes at 320, 360, 390, 430, and 760 pixels in dark and light themes: 120 combinations. It verifies no page-level horizontal overflow, 16px input fonts, 44px minimum primary/icon touch targets, and readable body copy. The weekly data table can scroll inside its panel without making the whole page wider.
+
+## Inline Today wins update
+
+Today is now the primary action surface. Each task card shows the highest tier already won (or an achievable start), only the requirements still needed for the next tier, and one Win T1/T2/T3 button. A click records all remaining requirements for that tier; the user should do that work before tapping. There is no Start/View win detour, extra confirmation, or celebration page. T2 and T3 are labeled optional; after T3 there is no further action. A short inline acknowledgment replaces a modal. Existing deep-linked task pages remain compatible, but Today does not require them. Timeline rows are read-only summaries rather than navigation traps.
+
+The new winLevel action uses the same user-scoped documents and immutable daily snapshots. Requirements and the deterministic win event are merged in one batch for existing cloud sessions. No rules or schema migration is needed. Target-level retries are idempotent; a brief disabled state prevents a double-click from accidentally awarding the following level. Existing partial requirement checks and past wins remain intact.
+
+Changed source files: src/TodayTaskCard.jsx (new), src/screens/Today.jsx, src/store.jsx, src/domain.js, src/styles.css. Apply all five, not CSS alone. Rebuild and deploy your frontend; do not replace Firebase configuration or delete data.
+
+Verification for this update: 17 domain/serialization/inline-action tests, 8 Firestore emulator tests including all three inline multi-requirement tier writes, guest browser tests verifying URL remains on Today through T1/T2/T3 and refresh persistence/double-click protection, and the 120 mobile layout combinations. Live production Firebase has not been modified or exercised.

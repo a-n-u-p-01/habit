@@ -10,3 +10,7 @@ PASS npm run test:browser: Chromium guest journey, tier progression, totals, ref
 No production project write, deployment, or live Google sign-in was performed. Firebase activation steps in README.md remain required. Screenshots show example test data only.
 
 The build reports a Firebase vendor chunk larger than 500 kB before compression (about 197 kB gzipped). This is a performance advisory, not a failed build. Further bundle/lazy-route optimization can be added before high-traffic deployment.
+
+PASS mobile readability update: 120 route/theme/viewport combinations, 16px inputs, 44px minimum primary/icon touch targets, readable body text and no page overflow. Unit tests and end-to-end guest flow rerun successfully after the CSS update. Backend/security files are unchanged.
+
+PASS inline Today update: 17 logic tests, 8 Firestore rule/emulator tests, inline progression/refresh/double-click guest browser checks, and 120 mobile layout combinations. Existing Firestore rules and Firebase configuration unchanged. New atomic next-tier writes verified against the emulator.

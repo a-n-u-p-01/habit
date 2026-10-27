@@ -3,9 +3,9 @@
   "checks": [
     "onboarding",
     "task-create",
-    "T1-win",
-    "optional-T2",
-    "optional-T3",
+    "inline-T1-win-no-navigation",
+    "inline-T2-double-click-safety",
+    "inline-T3-with-no-extra-action",
     "incremental-total",
     "refresh-persistence",
     "day-won",

@@ -121,3 +121,37 @@ test("Firestore serialization avoids illegal nested arrays and roundtrips snapsh
   assert.deepEqual(encoded.levels.t1, task.levels[0]);
   assert.deepEqual(decodeFirestore(encoded), data);
 });
+
+test("One click marks all requirements of only the next level", async () => {
+  const { completeNextLevel } = await import("../src/domain.js");
+  const p = row({});
+  const next = completeNextLevel(p, 1);
+  assert.equal(achieved(next), 1);
+  assert.equal(next.checks.ex1, true);
+  assert.equal(next.checks.ex2, true);
+  assert.equal(next.checks.ex3, undefined);
+  assert.deepEqual(p.checks, {});
+});
+test("One-click wins retain partial work and add only the remaining target level", async () => {
+  const { completeNextLevel } = await import("../src/domain.js");
+  const p = row({ ex1: true, ex2: true, ex3: true });
+  const next = completeNextLevel(p, 2);
+  assert.equal(achieved(next), 2);
+  assert.equal(next.checks.ex1, true);
+  assert.equal(next.checks.ex3, true);
+  assert.equal(next.checks.ex4, true);
+  assert.equal(next.checks.ex6, undefined);
+});
+test("Retrying a won tier is idempotent and cannot accidentally win the next one", async () => {
+  const { completeNextLevel } = await import("../src/domain.js");
+  const p = row({ ex1: true, ex2: true });
+  assert.equal(completeNextLevel(p, 1), p);
+  assert.equal(achieved(completeNextLevel(p, 1)), 1);
+});
+test("One-click tier action cannot skip T1 or jump from T1 to T3", async () => {
+  const { completeNextLevel } = await import("../src/domain.js");
+  assert.throws(() => completeNextLevel(row({}), 2));
+  assert.throws(() => completeNextLevel(row({ ex1: true, ex2: true }), 3));
+  assert.throws(() => completeNextLevel(row({}), 0));
+  assert.throws(() => completeNextLevel(row({}), 4));
+});

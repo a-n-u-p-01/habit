@@ -1,4 +1,4 @@
-import { chromium } from "@playwright/test";
+import { chromium, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 const browser = await chromium.launch({
@@ -44,18 +44,43 @@ await page
   .check();
 await page.getByRole("button", { name: "Save task", exact: true }).click();
 await page.getByRole("heading", { name: "Morning movement" }).waitFor();
-await page.getByRole("link", { name: "Start", exact: true }).click();
-await page.locator(".requirement-check").click();
-await page.getByRole("heading", { name: "Task Won!", exact: true }).waitFor();
-await page.getByRole("button", { name: "Continue to T2" }).click();
-assert.equal(await page.locator(".requirement-check").count(), 1);
-assert.match(await page.locator(".requirement-check").innerText(), /\+ 5/);
-await page.locator(".requirement-check").click();
-await page.getByRole("heading", { name: "Bigger Win!", exact: true }).waitFor();
-await page.getByRole("button", { name: "Continue to T3" }).click();
-await page.locator(".requirement-check").click();
-await page.getByRole("heading", { name: "Full Win!", exact: true }).waitFor();
-await page.getByRole("button", { name: "View my task summary" }).click();
+const card = page.getByRole("article", {
+  name: "Morning movement",
+  exact: true,
+});
+const homeUrl = page.url();
+await card
+  .getByRole("button", { name: "Win T1 for Morning movement", exact: true })
+  .click();
+await expect(card.locator(".inline-level-status")).toContainText("T1 won");
+assert.equal(page.url(), homeUrl);
+await expect(card.locator(".inline-next-copy")).toContainText("Next: T2");
+await expect(card.locator(".inline-next-copy")).toContainText("+ 5");
+await expect(card.locator(".optional-label")).toHaveText("Optional");
+await page.reload();
+await expect(card.locator(".inline-level-status")).toContainText("T1 won");
+await card
+  .getByRole("button", { name: "Win T2 for Morning movement", exact: true })
+  .dblclick();
+await expect(card.locator(".inline-level-status")).toContainText("T2 won");
+await expect(card.locator(".inline-next-copy")).toContainText("Next: T3");
+assert.equal(page.url(), homeUrl);
+await card
+  .getByRole("button", { name: "Win T3 for Morning movement", exact: true })
+  .click();
+await expect(card.locator(".inline-level-status")).toContainText("T3 won");
+await expect(card.getByRole("button")).toHaveCount(0);
+await expect(card.locator(".inline-full-win")).toContainText(
+  "Nothing more to do today",
+);
+assert.equal(page.url(), homeUrl);
+await page.reload();
+await expect(card.locator(".inline-level-status")).toContainText("T3 won");
+// Backward-compatible deep link still offers the cumulative summary.
+const taskId = await page.evaluate(
+  () => JSON.parse(localStorage.getItem("win-guest-v1")).tasks[0].id,
+);
+await page.goto(`http://127.0.0.1:4173/task/${taskId}`);
 await page.getByText("20 reps", { exact: true }).waitFor();
 await page.reload();
 await page.getByText("20 reps", { exact: true }).waitFor();
@@ -92,8 +117,7 @@ await page.goto("http://127.0.0.1:4173/review");
 await page.getByLabel("What worked?").fill("An achievable minimum helped.");
 await page.getByRole("button", { name: "Save my reflection" }).click();
 await page.reload();
-assert.equal(
-  await page.getByLabel("What worked?").inputValue(),
+await expect(page.getByLabel("What worked?")).toHaveValue(
   "An achievable minimum helped.",
 );
 await page.goto("http://127.0.0.1:4173/settings");
@@ -132,9 +156,9 @@ writeFileSync(
       checks: [
         "onboarding",
         "task-create",
-        "T1-win",
-        "optional-T2",
-        "optional-T3",
+        "inline-T1-win-no-navigation",
+        "inline-T2-double-click-safety",
+        "inline-T3-with-no-extra-action",
         "incremental-total",
         "refresh-persistence",
         "day-won",

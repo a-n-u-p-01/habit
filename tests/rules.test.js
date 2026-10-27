@@ -197,3 +197,49 @@ test("Saved template snapshots and private review paths accept valid owner write
     }),
   );
 });
+
+test("Inline multi-requirement tier wins merge safely and satisfy unchanged rules", async () => {
+  const { completeNextLevel, achieved } = await import("../src/domain.js");
+  const { decodeFirestore } = await import("../src/serialization.js");
+  const a = env.authenticatedContext("alice").firestore();
+  await setDoc(doc(a, "users/alice/tasks/a"), task);
+  let p = {
+    id: "2026-10-27_a",
+    taskId: "a",
+    date: "2026-10-27",
+    snapshot: exemplar,
+    checks: {},
+    scheduled: true,
+  };
+  await setDoc(doc(a, "users/alice/progress/2026-10-27_a"), encodeFirestore(p));
+  for (const target of [1, 2, 3]) {
+    const next = completeNextLevel(p, target);
+    const checks = Object.fromEntries(
+      p.snapshot.levels[target - 1].map((r) => [r.id, true]),
+    );
+    const batch = writeBatch(a);
+    batch.set(
+      doc(a, "users/alice/progress/2026-10-27_a"),
+      { checks },
+      { merge: true },
+    );
+    const id = `2026-10-27_a_T${target}`;
+    batch.set(
+      doc(a, `users/alice/wins/${id}`),
+      { id, taskId: "a", date: "2026-10-27", level: target },
+      { merge: true },
+    );
+    await assertSucceeds(batch.commit());
+    const stored = decodeFirestore(
+      (await getDoc(doc(a, "users/alice/progress/2026-10-27_a"))).data(),
+    );
+    if (achieved(stored) !== target)
+      throw new Error("Inline tier level was not preserved");
+    if (JSON.stringify(stored.checks) !== JSON.stringify(next.checks)) {
+      for (const [id, value] of Object.entries(next.checks))
+        if (stored.checks[id] !== value)
+          throw new Error("A requirement was lost");
+    }
+    p = stored;
+  }
+});

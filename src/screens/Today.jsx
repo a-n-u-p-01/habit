@@ -1,3 +1,4 @@
+import { TodayTaskCard } from "../TodayTaskCard";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   BrowserRouter,
@@ -181,11 +182,7 @@ export function Today() {
                   .filter((p) => p.date === key)
                   .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
                   .map((p) => (
-                    <Link
-                      to={`/task/${p.taskId}`}
-                      className="task-card"
-                      key={p.id}
-                    >
+                    <div className="task-card" key={p.id}>
                       <CategoryIcon category={p.snapshot.category} />
                       <div className="task-copy">
                         <h3>{p.snapshot.name}</h3>
@@ -196,52 +193,18 @@ export function Today() {
                         </p>
                       </div>
                       {achieved(p) > 0 && <Tier level={achieved(p)} />}
-                    </Link>
-                  ))
-              : todayTasks.map((t) => {
-                  const p = progress.find(
-                      (p) => p.taskId === t.id && p.date === key,
-                    ),
-                    a = achieved(p);
-                  return (
-                    <div
-                      className={cx("task-card", a > 0 && "task-won")}
-                      key={t.id}
-                    >
-                      <CategoryIcon category={t.category} />
-                      <div className="task-copy">
-                        <Link to={`/task/${t.id}`}>
-                          <h3>{t.name}</h3>
-                        </Link>
-                        <p>
-                          {a ? (
-                            <>
-                              <Check size={13} /> {LEVELS[a - 1]} · You've kept
-                              your promise.
-                            </>
-                          ) : (
-                            <>
-                              T1 ·{" "}
-                              {(p?.snapshot || t).levels[0]
-                                .map((r) => `${r.amount} ${r.unit} ${r.label}`)
-                                .join(" + ")}
-                            </>
-                          )}
-                        </p>
-                      </div>
-                      <div className="task-action">
-                        {a > 0 && <Tier level={a} />}
-                        <Link
-                          className={cx("button compact", a > 0 && "secondary")}
-                          to={`/task/${t.id}`}
-                        >
-                          {a ? "View win" : "Start"}
-                          {!a && <ArrowRight size={15} />}
-                        </Link>
-                      </div>
                     </div>
-                  );
-                })}
+                  ))
+              : todayTasks.map((t) => (
+                  <TodayTaskCard
+                    key={t.id}
+                    task={t}
+                    progress={progress.find(
+                      (p) => p.taskId === t.id && p.date === key,
+                    )}
+                    day={key}
+                  />
+                ))}
             {((view === "tasks" && !todayTasks.length) ||
               (view === "timeline" &&
                 !progress.some((p) => p.date === key))) && (

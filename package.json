@@ -10,7 +10,8 @@
     "test": "node --test tests/domain.test.js",
     "test:rules": "firebase emulators:exec --only firestore --project demo-win-today 'node --test tests/rules.test.js'",
     "test:browser": "node tests/browser-smoke.mjs",
-    "format": "prettier --write src tests vite.config.js index.html firebase.json firestore.indexes.json package.json"
+    "format": "prettier --write src tests vite.config.js index.html firebase.json firestore.indexes.json package.json",
+    "test:mobile": "node tests/mobile-layout.mjs"
   },
   "dependencies": {
     "firebase": "^12.0.0",

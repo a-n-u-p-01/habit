@@ -51,6 +51,28 @@ export function achieved(progress) {
   }
   return level;
 }
+// Plan exactly the requested next tier without altering previous wins.
+// Returning the same object for an already-earned tier makes retries idempotent.
+export function completeNextLevel(progress, target) {
+  if (!Number.isInteger(target) || target < 1 || target > 3)
+    throw new Error("Choose a level from T1 to T3.");
+  const current = achieved(progress);
+  if (current >= target) return progress;
+  if (target !== current + 1)
+    throw new Error("Win the current level before moving to the next one.");
+  const requirements = progress?.snapshot?.levels?.[target - 1];
+  if (!requirements?.length)
+    throw new Error(
+      "This level has no requirements. Edit the task and try again.",
+    );
+  return {
+    ...progress,
+    checks: {
+      ...progress.checks,
+      ...Object.fromEntries(requirements.map((r) => [r.id, true])),
+    },
+  };
+}
 export function totalWork(progress) {
   const totals = new Map();
   for (const requirements of (progress?.snapshot?.levels || []).slice(

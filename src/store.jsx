@@ -35,7 +35,13 @@ import {
 } from "firebase/firestore";
 import { auth, db, google } from "./firebase";
 import { encodeFirestore, decodeFirestore } from "./serialization";
-import { achieved, progressId, dateKey, scheduled } from "./domain";
+import {
+  achieved,
+  progressId,
+  dateKey,
+  scheduled,
+  completeNextLevel,
+} from "./domain";
 const Context = createContext();
 const GROUPS = [
   "tasks",
@@ -289,6 +295,65 @@ export function AppProvider({ children }) {
       fail(e);
     }
   }
+  async function winLevel(task, target, key = dateKey()) {
+    const p =
+      (!user &&
+        guestRef.current.progress.find(
+          (row) => row.id === progressId(task.id, key),
+        )) ||
+      (await begin(task, key));
+    const next = completeNextLevel(p, target);
+    if (next === p) return p;
+    const id = `${p.id}_T${target}`;
+    if (!user) {
+      let result = next;
+      setGuest((d) => {
+        const latest = d.progress.find((row) => row.id === p.id) || p;
+        result = completeNextLevel(latest, target);
+        if (result === latest) return d;
+        return {
+          ...d,
+          progress: [...d.progress.filter((row) => row.id !== p.id), result],
+          wins: [
+            ...d.wins.filter((w) => w.id !== id),
+            { id, taskId: p.taskId, date: p.date, level: target },
+          ],
+        };
+      });
+      return result;
+    }
+    const checks = Object.fromEntries(
+      p.snapshot.levels[target - 1].map((r) => [r.id, true]),
+    );
+    const batch = writeBatch(db);
+    batch.set(
+      doc(db, "users", user.uid, "progress", p.id),
+      { checks, updatedAt: serverTimestamp() },
+      { merge: true },
+    );
+    batch.set(
+      doc(db, "users", user.uid, "wins", id),
+      {
+        id,
+        taskId: p.taskId,
+        date: p.date,
+        level: target,
+        wonAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    const commit = batch.commit();
+    if (!online) {
+      commit.catch((e) => setError(`Offline win could not sync: ${e.message}`));
+      return next;
+    }
+    try {
+      await commit;
+      return next;
+    } catch (e) {
+      fail(e);
+    }
+  }
   async function publish(template) {
     if (!user) throw Error("Sign in to publish a template.");
     if (!online) throw Error("Reconnect to publish.");
@@ -407,6 +472,7 @@ export function AppProvider({ children }) {
         logout: () => signOut(auth),
         begin,
         check,
+        winLevel,
         publish,
         unpublish,
         importGuest,
