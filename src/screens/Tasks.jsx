@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { recordHabitDefinition } from "../history";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -88,11 +89,63 @@ import {
   Progression,
   Avatar,
 } from "../components";
+export function NewHabit() {
+  const location = useLocation();
+  // Choosing a template already expresses how the user wants to start.
+  if (location.state?.template) return <TaskEditor />;
+  return (
+    <>
+      <PageTitle
+        back="/"
+        eyebrow="ONE SMALL BEGINNING"
+        title="Start a new habit."
+      />
+      <p className="muted">
+        Choose a starting point. You can make either option your own.
+      </p>
+      <div className="habit-start-options">
+        <Link
+          className="panel habit-start-option"
+          aria-label="Use a template"
+          to="/templates"
+        >
+          <Layers size={28} />
+          <h2>Use a template</h2>
+          <p>
+            Choose a starter, saved template or one of your own. Adjust it to
+            fit your day.
+          </p>
+          <span>
+            Browse templates <ArrowRight size={18} />
+          </span>
+        </Link>
+        <Link
+          className="panel habit-start-option"
+          aria-label="Create manually"
+          to="/tasks/new/manual"
+        >
+          <Edit3 size={28} />
+          <h2>Create manually</h2>
+          <p>
+            Build your own minimum and optional extras. A private template will
+            be saved automatically.
+          </p>
+          <span>
+            Create manually <ArrowRight size={18} />
+          </span>
+        </Link>
+      </div>
+    </>
+  );
+}
+
 export function TaskEditor({ templateMode = false }) {
   const app = useApp(),
     { id } = useParams(),
     navigate = useNavigate(),
     location = useLocation();
+  const [newItemId] = useState(() => crypto.randomUUID());
+  const saveLock = useRef(false);
   const source = id
     ? (templateMode ? app.templates : app.tasks).find((t) => t.id === id)
     : location.state?.template;
@@ -143,6 +196,7 @@ export function TaskEditor({ templateMode = false }) {
   }
   async function save(e) {
     e.preventDefault();
+    if (saveLock.current) return;
     const validation = validateTask(form);
     if (validation) {
       setError(validation);
@@ -154,10 +208,11 @@ export function TaskEditor({ templateMode = false }) {
       );
       return;
     }
+    saveLock.current = true;
     setSaving(true);
     setError("");
     try {
-      const taskId = id || crypto.randomUUID(),
+      const taskId = id || newItemId,
         key = dateKey();
       const history = (id ? source?.scheduleHistory || [] : []).filter(
         (h) => h.from !== key,
@@ -189,8 +244,23 @@ export function TaskEditor({ templateMode = false }) {
           null,
         ...(templateMode ? { published: source?.published || false } : {}),
       };
-      await app.persist(templateMode ? "templates" : "tasks", taskId, value);
-      if (!templateMode && !id && source?.id)
+      if (!templateMode)
+        value.definitionHistory = recordHabitDefinition(
+          id ? source : null,
+          value,
+          key,
+        );
+      const manualCreation = !templateMode && !id && !source;
+      if (manualCreation) await app.createHabitWithTemplate(taskId, value);
+      else
+        await app.persist(templateMode ? "templates" : "tasks", taskId, value);
+      if (
+        !templateMode &&
+        !id &&
+        source?.id &&
+        !location.state?.privateTemplate &&
+        !app.templates.some((t) => t.id === source.id && !t.published)
+      )
         await recordUsage(source.id, app.user).catch(() =>
           app.setNotice("Habit saved. Template usage could not sync."),
         );
@@ -199,22 +269,39 @@ export function TaskEditor({ templateMode = false }) {
           ? "Personal template saved. Publish it from My Templates when ready."
           : id
             ? "Habit updated. Past sessions keep their original levels."
-            : "A small promise, ready for you.",
+            : manualCreation
+              ? app.user && !app.online
+                ? "Habit and private template saved on this device. They will sync when you reconnect."
+                : "Habit created. A private copy is ready in My Templates."
+              : "A small promise, ready for you.",
       );
       navigate(templateMode ? "/templates?tab=mine" : "/");
     } catch (e) {
       setError(e.message);
     } finally {
+      saveLock.current = false;
       setSaving(false);
     }
   }
   return (
     <>
       <PageTitle
-        back={templateMode ? "/templates" : "/profile"}
+        back={
+          templateMode || (!id && source)
+            ? "/templates"
+            : id
+              ? "/profile"
+              : "/tasks/new"
+        }
         eyebrow={templateMode ? "YOUR OWN BLUEPRINT" : "MAKE IT ACHIEVABLE"}
         title={`${id ? "Edit" : source ? "Customize" : "Create"} ${templateMode ? "template" : "habit"}`}
       />
+      {!templateMode && !id && !source && (
+        <p className="manual-template-note">
+          Saving this habit also saves a private reusable copy in My Templates.
+          It will not be published.
+        </p>
+      )}
       <form className="editor-layout" onSubmit={save}>
         <div className="editor-main">
           <section className="panel form-section">

@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "checks": [
+    "First unfinished habit highlighted in preserved order",
+    "Opening page and extras never awards progress",
+    "Real completion advances highlight",
+    "Partial progress encouragement",
+    "All T1 minimums win day without optional tiers",
+    "Completion and order persist",
+    "Rest day is not a win or failure",
+    "New user empty state",
+    "Mobile reflow and tap targets"
+  ],
+  "uncaughtErrors": []
+}

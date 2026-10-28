@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { Check, ArrowRight, Trophy } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Check, ArrowRight, ChevronDown, Trophy } from "lucide-react";
 import { CategoryIcon, Tier, RequirementText, cx } from "./components";
-import { achieved, LEVELS } from "./domain";
+import { achieved } from "./domain";
 import { useApp } from "./store";
 
 // Today is the action surface: no route change, checklist, or modal required.
-export function TodayTaskCard({ task, progress, day }) {
+export function TodayTaskCard({ task, progress, day, suggested = false }) {
   const app = useApp();
   const [busy, setBusy] = useState(false);
   const [settling, setSettling] = useState(false);
@@ -15,6 +15,10 @@ export function TodayTaskCard({ task, progress, day }) {
   const [message, setMessage] = useState("");
   const locked = useRef(false);
   const completed = achieved(progress);
+  const extraId = useId();
+  const hintId = `${extraId}-minimum-hint`;
+  const [expandedLevel, setExpandedLevel] = useState(null);
+  const extraOpen = completed > 0 && expandedLevel === completed;
   const nextLevel = completed + 1;
   const snapshot = progress?.snapshot || task;
   const remaining =
@@ -61,6 +65,7 @@ export function TodayTaskCard({ task, progress, day }) {
       className={cx(
         "task-card",
         "today-task-card",
+        suggested && completed === 0 && "suggested-habit",
         completed > 0 && "task-won",
         completed === 3 && "all-tiers-won",
       )}
@@ -70,21 +75,41 @@ export function TodayTaskCard({ task, progress, day }) {
       <div className="today-task-heading">
         <CategoryIcon category={snapshot.category} />
         <div className="task-copy">
+          {suggested && completed === 0 && (
+            <span className="next-step-label">Next small step</span>
+          )}
           <h3>{snapshot.name}</h3>
           <p className="inline-level-status">
             {completed > 0 ? (
               <>
-                <Check size={14} /> T{completed} badge achieved
+                <Check size={14} /> Minimum done
               </>
             ) : (
-              "Ready for your T1 badge"
+              "Start with your minimum"
             )}
           </p>
         </div>
         {completed > 0 && <Tier level={completed} />}
       </div>
+      {completed > 0 && completed < 3 && (
+        <button
+          type="button"
+          className="optional-extra-toggle"
+          aria-label={`${extraOpen ? "Hide optional extra" : "Optional extra"} for ${snapshot.name}`}
+          aria-expanded={extraOpen}
+          aria-controls={extraId}
+          onClick={() => setExpandedLevel(extraOpen ? null : completed)}
+        >
+          {extraOpen ? "Hide optional extra" : "Optional extra"}
+          <ChevronDown size={16} />
+        </button>
+      )}
       {completed < 3 ? (
-        <div className="today-task-next">
+        <div
+          id={extraId}
+          className="today-task-next"
+          hidden={completed > 0 && !extraOpen}
+        >
           <div className="inline-next-copy">
             <h4>
               Next: T{nextLevel} badge
@@ -92,6 +117,11 @@ export function TodayTaskCard({ task, progress, day }) {
                 <span className="optional-label">Optional</span>
               )}
             </h4>
+            {completed === 0 && (
+              <p className="minimum-completion-hint" id={hintId}>
+                Do these first, then mark your minimum done.
+              </p>
+            )}
             <ul className="inline-next-requirements">
               {remaining.map((r) => (
                 <li key={r.id}>
@@ -109,9 +139,18 @@ export function TodayTaskCard({ task, progress, day }) {
             )}
             disabled={busy || settling}
             onClick={win}
-            aria-label={`Achieve T${nextLevel} badge for ${snapshot.name}`}
+            aria-label={
+              completed === 0
+                ? `Mark minimum done for ${snapshot.name}`
+                : `Achieve T${nextLevel} badge for ${snapshot.name}`
+            }
+            aria-describedby={completed === 0 ? hintId : undefined}
           >
-            {busy ? "Saving…" : `Achieve T${nextLevel} badge`}
+            {busy
+              ? "Saving…"
+              : completed === 0
+                ? "Mark minimum done"
+                : `Achieve T${nextLevel} badge`}
             {!busy && <ArrowRight size={17} />}
           </button>
         </div>
@@ -127,7 +166,7 @@ export function TodayTaskCard({ task, progress, day }) {
         </p>
       )}
       <p
-        className="inline-win-message"
+        className="inline-win-message visually-hidden"
         role="status"
         aria-live="polite"
         aria-atomic="true"

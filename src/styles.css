@@ -541,13 +541,6 @@ button:active,
   color: var(--text);
   box-shadow: 0 2px 5px #0001;
 }
-.small-tabs {
-  padding: 3px;
-}
-.small-tabs button {
-  font-size: 9px;
-  padding: 6px 10px;
-}
 .task-list {
   display: grid;
   gap: 10px;
@@ -2479,8 +2472,7 @@ input[type="checkbox"] {
   .section-heading h2 > span {
     display: none;
   }
-  .tabs button,
-  .small-tabs button {
+  .tabs button {
     min-height: 44px;
     font-size: 14px;
     padding: 10px 16px;
@@ -3587,4 +3579,112 @@ input[type="checkbox"] {
   .admin-role { width: 100%; }
   .feedback-heading { align-items: flex-start; flex-wrap: wrap; }
   .feedback-card { padding: 20px 16px; }
+}
+
+/* Today: action first, with a compact progress and week overview. */
+.today-focus .page-title { flex-wrap: wrap; gap: 16px 24px; margin-bottom: 20px; }
+.today-focus .page-title > div { flex: 1 1 260px; min-width: 0; }
+.today-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; }
+.today-shortcuts a { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 10px 13px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; color: var(--muted); }
+.today-shortcuts a:hover { background: var(--surface2); color: var(--text); }
+.today-shortcuts a:focus-visible, .optional-extra-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 3px; }
+.today-overview { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, 1fr); gap: 16px; margin-bottom: 28px; }
+.today-summary, .today-week { min-width: 0; padding: 22px 24px; }
+.today-summary .eyebrow { font-size: 10px; }
+.today-summary-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 16px; margin: 10px 0 12px; }
+.today-summary-line h2 { font-size: 18px; font-weight: 500; margin: 0; }
+.today-summary-line strong { font: 700 25px Manrope, sans-serif; }
+.today-summary-line > span { display: inline-flex; align-items: center; gap: 6px; color: var(--green); font-size: 13px; }
+.today-summary progress { appearance: none; display: block; width: 100%; height: 5px; border: 0; border-radius: 5px; overflow: hidden; background: var(--line); color: var(--green); }
+.today-summary progress::-webkit-progress-bar { background: var(--line); border-radius: 5px; }
+.today-summary progress::-webkit-progress-value { background: var(--green); border-radius: 5px; }
+.today-summary progress::-moz-progress-bar { background: var(--green); border-radius: 5px; }
+.today-summary > p { margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.today-week-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.today-week-heading h2 { margin: 0; font-size: 14px; }
+.today-week-heading a { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; }
+.today-week-heading > span { color: var(--muted); font-size: 12px; }
+.today-week .week-strip { gap: 6px; }
+.today-week .week-strip > div { gap: 7px; }
+.today-week .week-strip small { font-size: 11px; }
+.today-week .day-circle { height: 28px; width: 28px; font-size: 11px; }
+.today-habits > .section-heading { margin-bottom: 12px; }
+.today-habits > .section-heading h2 { font-size: 19px; }
+.today-focus .today-task-heading .task-copy { flex: 1; min-width: 0; }
+.today-focus .today-task-heading .task-copy h3 { overflow-wrap: anywhere; }
+.optional-extra-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 0 0; margin-top: 4px; color: var(--muted); font-size: 13px; }
+.optional-extra-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.today-task-next[hidden] { display: none; }
+.optional-extra-toggle + .today-task-next { margin-top: 8px; }
+.visually-hidden, .inline-win-message.visually-hidden:not(:empty) { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; animation: none; }
+@media (max-width: 760px) {
+  .today-focus .page-title { margin-bottom: 16px; }
+  .today-shortcuts { width: 100%; gap: 7px; }
+  .today-shortcuts a { flex: 1 1 auto; padding: 10px; font-size: 13px; }
+  .today-overview { grid-template-columns: 1fr; gap: 12px; margin-bottom: 22px; }
+  .today-summary, .today-week { padding: 16px 18px; }
+  .today-summary-line { margin-top: 7px; }
+  .today-summary-line h2 { font-size: 17px; }
+  .today-summary-line strong { font-size: 23px; }
+  .today-summary > p { font-size: 14px; }
+  .today-week-heading { margin-bottom: 6px; }
+  .today-week-heading a { min-height: 44px; }
+  .today-week .day-circle { height: 30px; width: 30px; font-size: 12px; }
+  .today-week .week-strip { gap: 3px; }
+  .optional-extra-toggle { font-size: 14px; }
+  .today-focus .task-card.today-task-card { padding: 18px; }
+  .today-focus .today-habits > .section-heading h2 { font-size: 20px; }
+}
+
+/* A suggested next action, never a new sort order or a new completion rule. */
+.today-focus .task-card.suggested-habit { border-color: var(--purple); }
+.next-step-label { display: inline-block; color: var(--purple); font-size: 11px; font-weight: 600; margin-bottom: 5px; }
+.minimum-completion-hint { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 0 0 10px; }
+@media (max-width: 760px) {
+  .next-step-label { font-size: 12px; }
+  .minimum-completion-hint { font-size: 14px; }
+  .today-focus .inline-win-button { white-space: normal; max-width: 100%; }
+}
+
+/* New habit: choose a starting point before opening the editor. */
+.habit-start-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 24px; }
+.habit-start-option { display: flex; flex-direction: column; align-items: flex-start; padding: 30px; color: var(--text); border: 1px solid var(--line); }
+.habit-start-option > svg { color: var(--purple); margin-bottom: 16px; }
+.habit-start-option h2 { font-size: 23px; margin: 0 0 10px; }
+.habit-start-option p { color: var(--muted); line-height: 1.7; margin: 0 0 24px; }
+.habit-start-option > span { display: flex; align-items: center; gap: 10px; margin-top: auto; font-size: 14px; color: var(--purple); }
+.habit-start-option:hover { border-color: var(--purple); background: var(--surface2); }
+.habit-start-option:focus-visible { outline: 2px solid var(--purple); outline-offset: 4px; }
+.manual-template-note { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 24px; }
+@media (max-width: 760px) {
+  .habit-start-options { grid-template-columns: 1fr; gap: 16px; }
+  .habit-start-option { padding: 24px 20px; }
+  .habit-start-option h2 { font-size: 22px; }
+  .habit-start-option p { font-size: 15px; }
+}
+
+/* Late logging is an explicit date-confirmed action, not a rewritten snapshot. */
+.week-correction-hint { color: var(--muted); font-size: 14px; line-height: 1.7; margin-bottom: 18px; }
+.week-correction-button { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; border: 1px dashed var(--line); border-radius: 10px; }
+.week-correction-button:hover { border-color: var(--purple); background: var(--surface2); }
+.week-correction-button:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+.week-correction-button .grid-empty { margin: 0; }
+.late-entry-label { display: block; color: var(--muted); font-size: 10px; margin-top: 5px; white-space: nowrap; }
+.past-completion-dialog { width: min(600px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: auto; padding: 28px; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+.past-completion-dialog::backdrop { background: #030912bb; }
+.past-completion-dialog h2 { font-size: 25px; margin: 12px 0 6px; overflow-wrap: anywhere; }
+.past-completion-dialog p { font-size: 14px; line-height: 1.7; }
+.past-entry-date { color: var(--purple); font-weight: 600; }
+.past-completion-dialog label:not(.confirm-row) { display: grid; gap: 8px; margin: 18px 0; font-size: 14px; }
+.past-entry-requirements { display: grid; gap: 12px; margin: 20px 0; }
+.past-entry-requirements section { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; }
+.past-entry-requirements h3 { display: flex; align-items: center; gap: 10px; font-size: 15px; margin: 0 0 10px; }
+.past-entry-requirements ul { padding-left: 20px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+.past-entry-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+.past-completion-dialog .button { min-height: 44px; }
+.past-completion-dialog .confirm-row { align-items: flex-start; margin: 16px 0; }
+@media (max-width: 760px) {
+  .past-completion-dialog { padding: 22px 18px; }
+  .past-completion-dialog select { min-height: 44px; font-size: 16px; }
+  .past-entry-actions .button { flex: 1 1 auto; white-space: normal; }
 }

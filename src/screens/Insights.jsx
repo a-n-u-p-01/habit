@@ -1,3 +1,5 @@
+import { pastEntryInfo } from "../history";
+import { PastCompletionDialog } from "../PastCompletionDialog";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   BrowserRouter,
@@ -90,6 +92,7 @@ import {
 } from "../components";
 export function Week() {
   const app = useApp();
+  const [correction, setCorrection] = useState(null);
   const [offset, setOffset] = useState(0),
     keys = weekDates(offset),
     stats = statistics(app.tasks, app.progress, keys),
@@ -136,6 +139,10 @@ export function Week() {
           <ChevronRight />
         </button>
       </div>
+      <p className="week-correction-hint">
+        Forgot to mark something you completed? Select a scheduled day from the
+        previous 7 days to log it. Older days and rest days stay read-only.
+      </p>
       <div className="panel week-table-wrap">
         <table className="week-table">
           <thead>
@@ -162,10 +169,26 @@ export function Week() {
                     ),
                     a = achieved(p),
                     s = scheduled(t, k) || p?.scheduled;
+                  const canCorrect =
+                    a < 3 && pastEntryInfo(t, p, k, today).eligible;
+                  const lateLabel = p?.lateLoggedAt
+                    ? `Logged later on ${new Date(p.lateLoggedAt).toLocaleString()}`
+                    : "";
+                  const marker = a ? (
+                    <span className={`grid-win t${a}`}>
+                      {a === 1 ? <Check size={15} /> : <>T{a}</>}
+                    </span>
+                  ) : s ? (
+                    <span className={cx("grid-empty", k < today && "past")}>
+                      {k < today ? "·" : ""}
+                    </span>
+                  ) : (
+                    <span className="not-scheduled">—</span>
+                  );
                   return (
                     <td
                       key={k}
-                      title={
+                      title={[
                         a
                           ? `T${a} badge achieved`
                           : !s
@@ -174,19 +197,28 @@ export function Week() {
                               ? "Coming up"
                               : k === today
                                 ? "A chance to show up"
-                                : "A fresh start is always ahead"
-                      }
+                                : "A fresh start is always ahead",
+                        lateLabel,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     >
-                      {a ? (
-                        <span className={`grid-win t${a}`}>
-                          {a === 1 ? <Check size={15} /> : <>T{a}</>}
-                        </span>
-                      ) : s ? (
-                        <span className={cx("grid-empty", k < today && "past")}>
-                          {k < today ? "·" : ""}
-                        </span>
+                      {canCorrect ? (
+                        <button
+                          type="button"
+                          className="week-correction-button"
+                          aria-label={`Log completion for ${t.name} on ${k}`}
+                          onClick={() =>
+                            setCorrection({ taskId: t.id, day: k })
+                          }
+                        >
+                          {marker}
+                        </button>
                       ) : (
-                        <span className="not-scheduled">—</span>
+                        marker
+                      )}
+                      {p?.lateLoggedAt && (
+                        <span className="late-entry-label">Logged later</span>
                       )}
                     </td>
                   );
@@ -217,6 +249,17 @@ export function Week() {
           <span>— Not scheduled</span>
         </div>
       </div>
+      {correction && app.tasks.find((t) => t.id === correction.taskId) && (
+        <PastCompletionDialog
+          key={`${correction.taskId}_${correction.day}`}
+          task={app.tasks.find((t) => t.id === correction.taskId)}
+          day={correction.day}
+          progress={app.progress.find(
+            (p) => p.taskId === correction.taskId && p.date === correction.day,
+          )}
+          onClose={() => setCorrection(null)}
+        />
+      )}
       <Stats
         items={[
           [stats.daysWon, "Days Won"],

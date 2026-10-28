@@ -6,6 +6,7 @@ service cloud.firestore {
   function role() { return signedIn() && exists(/databases/$(database)/documents/userRoles/$(request.auth.uid)) ? get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.role : 'user'; }
   function staff() { return role() in ['admin','super_admin']; }
   function superAdmin() { return role() == 'super_admin'; }
+  function lateMetadata(d) { return !d.keys().hasAny(['lateLoggedAt','lateRequirementsSource']) || (d.lateLoggedAt is number && d.lateLoggedAt > 0 && d.lateRequirementsSource in ['saved_session','saved_history','confirmed_current']); }
   function shortText(s,n) { return s is string && s.size() > 0 && s.size() <= n; }
   function requirement(r) { return r is map && r.id is string && r.label is string && r.unit is string && r.amount is number && r.amount > 0 && r.amount <= 100000; }
   function at(rows,i) { return rows.size() <= i || requirement(rows[i]); }
@@ -30,12 +31,12 @@ service cloud.firestore {
    }
    match /progress/{id} {
     allow read,delete: if own(uid);
-    allow create: if own(uid) && request.resource.data.id == id && id == request.resource.data.date + '_' + request.resource.data.taskId && date(request.resource.data.date) && request.resource.data.checks is map && request.resource.data.scheduled is bool && blueprint(request.resource.data.snapshot) && exists(/databases/$(database)/documents/users/$(uid)/tasks/$(request.resource.data.taskId));
-    allow update: if own(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checks','updatedAt']) && request.resource.data.checks is map;
+    allow create: if own(uid) && request.resource.data.id == id && id == request.resource.data.date + '_' + request.resource.data.taskId && date(request.resource.data.date) && request.resource.data.checks is map && request.resource.data.scheduled is bool && lateMetadata(request.resource.data) && blueprint(request.resource.data.snapshot) && exists(/databases/$(database)/documents/users/$(uid)/tasks/$(request.resource.data.taskId));
+    allow update: if own(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checks','updatedAt','lateLoggedAt','lateRequirementsSource']) && request.resource.data.checks is map && lateMetadata(request.resource.data);
    }
    match /wins/{id} {
     allow read,delete: if own(uid);
-    allow create,update: if own(uid) && request.resource.data.id == id && date(request.resource.data.date) && id == request.resource.data.date + '_' + request.resource.data.taskId + '_T' + string(request.resource.data.level) && validWin(uid,request.resource.data);
+    allow create,update: if own(uid) && request.resource.data.id == id && date(request.resource.data.date) && id == request.resource.data.date + '_' + request.resource.data.taskId + '_T' + string(request.resource.data.level) && lateMetadata(request.resource.data) && validWin(uid,request.resource.data);
    }
    match /templates/{id} {
     allow read,delete: if own(uid);

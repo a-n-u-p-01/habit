@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "checks": [
+    "Previous seven days only",
+    "No today/future/pre-creation/unscheduled actions",
+    "Original snapshot shown unchanged",
+    "Date-specific completion confirmation",
+    "Legacy requirements require extra confirmation",
+    "T2 includes T1 and T2 only",
+    "Logged later labels persist",
+    "Historical day statistics update",
+    "Today's progress unchanged",
+    "Keyboard open/Escape/focus return",
+    "Mobile dialog fits"
+  ]
+}

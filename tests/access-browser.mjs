@@ -1,9 +1,17 @@
+import {
+  exemplar,
+  dateKey,
+  daysBack,
+  weekDates,
+  progressId,
+} from "../src/domain.js";
+import { encodeFirestore } from "../src/serialization.js";
 // Run against Vite on port 4173 and isolated demo Auth/Firestore emulators.
 // Test-only request interception connects the app to emulators without changing
 // the deployed Firebase configuration or using real accounts.
 import { chromium, expect } from "@playwright/test";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, collection, getDocs, getDoc } from "firebase/firestore";
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
@@ -262,6 +270,244 @@ try {
       .locator(".profile-menu")
       .getByRole("link", { name: "Report or suggest" }),
   ).toBeVisible();
+  // The same flow must save both documents for an authenticated cloud user.
+  await normal.page.goto(`${baseURL}/tasks/new`);
+  await normal.page
+    .getByRole("link", { name: "Create manually", exact: true })
+    .click();
+  await normal.page
+    .getByPlaceholder("e.g. Move a little")
+    .fill("Cloud reading habit");
+  for (const n of [1, 2, 3]) {
+    await normal.page
+      .getByRole("textbox", { name: `T${n} activity 1`, exact: true })
+      .fill("Reading");
+  }
+  while (
+    await normal.page
+      .locator('.weekday-picker button[aria-pressed="false"]')
+      .count()
+  )
+    await normal.page
+      .locator('.weekday-picker button[aria-pressed="false"]')
+      .first()
+      .click();
+  await normal.page
+    .getByRole("checkbox", { name: "T2 and T3 are additional amounts" })
+    .check();
+  await normal.page
+    .getByRole("button", { name: "Save habit", exact: true })
+    .click();
+  await expect(
+    normal.page.getByRole("heading", {
+      name: "Cloud reading habit",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    const habits = await getDocs(collection(db, "users", member.uid, "tasks"));
+    const templates = await getDocs(
+      collection(db, "users", member.uid, "templates"),
+    );
+    assert.equal(habits.size, 1);
+    assert.equal(templates.size, 1);
+    assert.equal(habits.docs[0].id, templates.docs[0].id);
+    assert.equal(templates.docs[0].data().published, false);
+    assert.deepEqual(
+      habits.docs[0].data().levels,
+      templates.docs[0].data().levels,
+    );
+    assert.equal(
+      Object.hasOwn(templates.docs[0].data(), "scheduleHistory"),
+      false,
+    );
+    assert.equal(
+      (await getDocs(collection(db, "templates"))).size,
+      0,
+      "Manual templates must not be publicly published",
+    );
+  });
+  await normal.page.reload();
+  await normal.page.goto(`${baseURL}/templates?tab=mine`);
+  const privateCard = normal.page.locator(".template-card").filter({
+    has: normal.page.getByRole("heading", {
+      name: "Cloud reading habit",
+      exact: true,
+    }),
+  });
+  await privateCard.getByRole("link", { name: "Use", exact: true }).click();
+  await expect(
+    normal.page.getByRole("heading", { name: "Customize habit", exact: true }),
+  ).toBeVisible();
+  await normal.page
+    .getByPlaceholder("e.g. Move a little")
+    .fill("Cloud reading copy");
+  await normal.page
+    .getByRole("checkbox", { name: "T2 and T3 are additional amounts" })
+    .check();
+  await normal.page
+    .getByRole("button", { name: "Save habit", exact: true })
+    .click();
+  await expect(
+    normal.page.getByRole("heading", {
+      name: "Cloud reading copy",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    assert.equal(
+      (await getDocs(collection(ctx.firestore(), "users", member.uid, "tasks")))
+        .size,
+      2,
+    );
+    assert.equal(
+      (
+        await getDocs(
+          collection(ctx.firestore(), "users", member.uid, "templates"),
+        )
+      ).size,
+      1,
+    );
+  });
+  // Exercise both existing-session updates and new-session creation for past dates.
+  const pastDay = daysBack(2)[0],
+    createdDay = daysBack(8)[0];
+  const historicalSnapshot = {
+    name: "Original historical requirements",
+    category: exemplar.category,
+    weekdays: [0, 1, 2, 3, 4, 5, 6],
+    levels: exemplar.levels,
+  };
+  const historicalTask = {
+    ...historicalSnapshot,
+    name: "Cloud historical habit",
+    id: "history-old",
+    createdDay,
+    active: true,
+    scheduleHistory: [],
+    levels: exemplar.levels.map((rows) =>
+      rows.map((r) => ({ ...r, amount: 999 })),
+    ),
+  };
+  const versionedTask = {
+    ...historicalTask,
+    name: "Cloud versioned habit",
+    id: "history-versioned",
+    definitionHistory: [
+      { from: createdDay, snapshot: historicalSnapshot },
+      {
+        from: dateKey(),
+        snapshot: { ...historicalSnapshot, levels: historicalTask.levels },
+      },
+    ],
+  };
+  const pastId = progressId(historicalTask.id, pastDay);
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(
+      doc(db, "users", member.uid, "tasks", historicalTask.id),
+      encodeFirestore(historicalTask),
+    );
+    await setDoc(
+      doc(db, "users", member.uid, "tasks", versionedTask.id),
+      encodeFirestore(versionedTask),
+    );
+    await setDoc(
+      doc(db, "users", member.uid, "progress", pastId),
+      encodeFirestore({
+        id: pastId,
+        taskId: historicalTask.id,
+        date: pastDay,
+        snapshot: historicalSnapshot,
+        checks: {},
+        scheduled: true,
+      }),
+    );
+  });
+  await normal.page.goto(`${baseURL}/week`);
+  await normal.page
+    .getByRole("heading", { name: "Your week, in small wins.", exact: true })
+    .waitFor();
+  if (!weekDates().includes(pastDay))
+    await normal.page
+      .getByRole("button", { name: "Previous week", exact: true })
+      .click();
+  await normal.page
+    .getByRole("button", {
+      name: `Log completion for Cloud historical habit on ${pastDay}`,
+      exact: true,
+    })
+    .click();
+  const lateDialog = normal.page.getByRole("dialog");
+  await expect(
+    lateDialog.getByRole("heading", {
+      name: "Original historical requirements",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await lateDialog
+    .getByRole("combobox", { name: "Highest tier completed", exact: true })
+    .selectOption("3");
+  await lateDialog
+    .getByRole("checkbox", {
+      name: /^I completed all the requirements shown on/,
+    })
+    .check();
+  await lateDialog
+    .getByRole("button", { name: "Save past completion", exact: true })
+    .click();
+  await expect(lateDialog).toHaveCount(0);
+  await normal.page
+    .getByRole("button", {
+      name: `Log completion for Cloud versioned habit on ${pastDay}`,
+      exact: true,
+    })
+    .click();
+  await expect(
+    lateDialog.getByText(/No original requirements were saved/),
+  ).toHaveCount(0);
+  await lateDialog
+    .getByRole("checkbox", {
+      name: /^I completed all the requirements shown on/,
+    })
+    .check();
+  await lateDialog
+    .getByRole("button", { name: "Save past completion", exact: true })
+    .click();
+  await expect(lateDialog).toHaveCount(0);
+  await expect(normal.page.locator(".late-entry-label")).toHaveCount(2);
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    const saved = (
+      await getDoc(doc(db, "users", member.uid, "progress", pastId))
+    ).data();
+    assert.deepEqual(saved.snapshot, encodeFirestore(historicalSnapshot));
+    assert.equal(saved.lateRequirementsSource, "saved_session");
+    assert.equal(typeof saved.lateLoggedAt, "number");
+    for (const level of [1, 2, 3])
+      assert.equal(
+        (
+          await getDoc(
+            doc(db, "users", member.uid, "wins", `${pastId}_T${level}`),
+          )
+        ).exists(),
+        true,
+      );
+    const newSession = (
+      await getDoc(
+        doc(
+          db,
+          "users",
+          member.uid,
+          "progress",
+          progressId(versionedTask.id, pastDay),
+        ),
+      )
+    ).data();
+    assert.deepEqual(newSession.snapshot, encodeFirestore(historicalSnapshot));
+    assert.equal(newSession.lateRequirementsSource, "saved_history");
+  });
   assert.deepEqual(errors, []);
   writeFileSync(
     "screenshots/access-results.json",
@@ -281,6 +527,10 @@ try {
           "User search",
           "Mobile layout",
           "Profile feedback link",
+          "Cloud manual habit and private template saved together",
+          "Cloud private template reuse without duplication or public publication",
+          "Cloud past-day correction preserves original session",
+          "Cloud past-day creation restores historical requirements",
           "No browser exceptions",
         ],
       },

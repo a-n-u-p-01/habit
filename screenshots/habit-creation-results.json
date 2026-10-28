@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "checks": [
+    "New habit choice",
+    "Manual habit plus private template saved together",
+    "Duplicate-click protection",
+    "Clean reusable template fields",
+    "Reload persistence",
+    "Editing does not overwrite template",
+    "Personal template reuse without duplicates",
+    "Fresh requirement IDs for copies",
+    "Starter template customization",
+    "Cancel does not save",
+    "Mobile choice layout"
+  ]
+}

@@ -21,7 +21,32 @@ await page.getByRole("button", { name: "T2", exact: true }).click();
 await page.getByText("These are additional sets, not totals.").waitFor();
 await page.getByRole("button", { name: "Next", exact: true }).click();
 await page.getByRole("button", { name: "Start on this device" }).click();
+await expect(page.locator(".today-summary")).toContainText(
+  "No habits scheduled",
+);
+await expect(
+  page.getByRole("progressbar", { name: "Today's minimums completed" }),
+).toHaveAttribute("value", "0");
+await expect(
+  page.locator(".today-hero,.reminder-card,.review-link"),
+).toHaveCount(0);
+await expect(
+  page
+    .getByRole("navigation", { name: "Habit shortcuts" })
+    .getByRole("link", { name: "This week", exact: true }),
+).toHaveAttribute("href", "/week");
+await expect(
+  page
+    .getByRole("navigation", { name: "Habit shortcuts" })
+    .getByRole("link", { name: "New habit", exact: true }),
+).toHaveAttribute("href", "/tasks/new");
+await expect(
+  page
+    .getByRole("navigation", { name: "Habit shortcuts" })
+    .getByRole("link", { name: "Templates", exact: true }),
+).toHaveAttribute("href", "/templates");
 await page.getByRole("link", { name: "Create your first habit" }).click();
+await page.getByRole("link", { name: "Create manually", exact: true }).click();
 await page.getByPlaceholder("e.g. Move a little").fill("Morning movement");
 for (let i = 1; i <= 3; i++) {
   await page
@@ -51,30 +76,53 @@ const card = page.getByRole("article", {
 const homeUrl = page.url();
 await card
   .getByRole("button", {
-    name: "Achieve T1 badge for Morning movement",
+    name: "Mark minimum done for Morning movement",
     exact: true,
   })
   .click();
 await expect(card.locator(".inline-level-status")).toContainText(
-  "T1 badge achieved",
+  "Minimum done",
 );
+await expect(card.locator(".tier")).toHaveText("T1");
+await expect(card.locator(".today-task-next")).toBeHidden();
+await expect(
+  page.getByRole("progressbar", { name: "Today's minimums completed" }),
+).toHaveAttribute("value", "1");
 assert.equal(page.url(), homeUrl);
+const extra = () =>
+  card.getByRole("button", {
+    name: "Optional extra for Morning movement",
+    exact: true,
+  });
+await extra().click();
 await expect(card.locator(".inline-next-copy")).toContainText("Next: T2");
 await expect(card.locator(".inline-next-copy")).toContainText("+ 5");
 await expect(card.locator(".optional-label")).toHaveText("Optional");
 await page.reload();
 await expect(card.locator(".inline-level-status")).toContainText(
-  "T1 badge achieved",
+  "Minimum done",
 );
+await expect(card.locator(".today-task-next")).toBeHidden();
+await extra().focus();
+await page.keyboard.press("Enter");
+await expect(card.locator(".today-task-next")).toBeVisible();
+await card
+  .getByRole("button", {
+    name: "Hide optional extra for Morning movement",
+    exact: true,
+  })
+  .press("Space");
+await expect(card.locator(".today-task-next")).toBeHidden();
+await extra().click();
 await card
   .getByRole("button", {
     name: "Achieve T2 badge for Morning movement",
     exact: true,
   })
   .dblclick();
-await expect(card.locator(".inline-level-status")).toContainText(
-  "T2 badge achieved",
-);
+await expect(card.locator(".tier")).toHaveText("T2");
+await expect(card.locator(".today-task-next")).toBeHidden();
+await extra().click();
 await expect(card.locator(".inline-next-copy")).toContainText("Next: T3");
 assert.equal(page.url(), homeUrl);
 await card
@@ -83,9 +131,7 @@ await card
     exact: true,
   })
   .click();
-await expect(card.locator(".inline-level-status")).toContainText(
-  "T3 badge achieved",
-);
+await expect(card.locator(".tier")).toHaveText("T3");
 await expect(card.getByRole("button")).toHaveCount(0);
 await expect(card.locator(".inline-full-win")).toContainText(
   "Nothing more to do today",
@@ -93,8 +139,9 @@ await expect(card.locator(".inline-full-win")).toContainText(
 assert.equal(page.url(), homeUrl);
 await page.reload();
 await expect(card.locator(".inline-level-status")).toContainText(
-  "T3 badge achieved",
+  "Minimum done",
 );
+await expect(card.locator(".tier")).toHaveText("T3");
 // Backward-compatible deep link still offers the cumulative summary.
 const taskId = await page.evaluate(
   () => JSON.parse(localStorage.getItem("win-guest-v1")).tasks[0].id,
@@ -107,6 +154,12 @@ await page.getByRole("link", { name: "Done for today", exact: true }).click();
 await page
   .getByRole("heading", { name: "You kept your promises today." })
   .waitFor();
+await expect(
+  page.getByRole("button", { name: "Timeline", exact: true }),
+).toHaveCount(0);
+await expect(
+  page.getByRole("button", { name: "Habits", exact: true }),
+).toHaveCount(0);
 mkdirSync("screenshots", { recursive: true });
 await page.screenshot({
   path: "screenshots/desktop-today.png",
@@ -175,12 +228,17 @@ writeFileSync(
       checks: [
         "onboarding",
         "task-create",
+        "today-has-no-timeline-or-view-switch",
         "inline-T1-win-no-navigation",
         "inline-T2-double-click-safety",
         "inline-T3-with-no-extra-action",
         "incremental-total",
         "refresh-persistence",
         "day-won",
+        "optional-extras-collapsed-after-completion-and-refresh",
+        "daily-progress-bar-updates",
+        "today-empty-state-and-shortcuts",
+        "optional-extra-keyboard-controls",
         "weekly-grid",
         "analytics",
         "template-customization",

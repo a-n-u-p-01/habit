@@ -518,3 +518,127 @@ test("Revoking a staff role removes server access immediately", async () => {
   await assertFails(getDocs(collection(staff, "users")));
   await assertFails(getDocs(collection(staff, "feedback")));
 });
+
+test("Owner can atomically save a manual habit and private template", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  const template = {
+    id: "a",
+    name: task.name,
+    category: task.category,
+    weekdays: task.weekdays,
+    levels: task.levels,
+    description: "",
+    published: false,
+  };
+  const batch = writeBatch(db);
+  batch.set(doc(db, "users/alice/tasks/a"), task);
+  batch.set(doc(db, "users/alice/templates/a"), template);
+  await assertSucceeds(batch.commit());
+  const other = env.authenticatedContext("bob").firestore();
+  await assertFails(getDoc(doc(other, "users/alice/templates/a")));
+});
+
+test("If the generated template is invalid, the paired habit is not saved", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  const batch = writeBatch(db);
+  batch.set(doc(db, "users/alice/tasks/a"), task);
+  batch.set(doc(db, "users/alice/templates/a"), {
+    ...task,
+    published: false,
+    category: "Invalid",
+  });
+  await assertFails(batch.commit());
+  const habit = await getDoc(doc(db, "users/alice/tasks/a"));
+  const template = await getDoc(doc(db, "users/alice/templates/a"));
+  if (habit.exists() || template.exists())
+    throw new Error("Atomic creation left a partial document");
+});
+
+test("Late completion writes tier wins atomically without changing an existing snapshot", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  await setDoc(doc(db, "users/alice/tasks/a"), task);
+  const id = "2026-10-27_a";
+  const p = {
+    id,
+    taskId: "a",
+    date: "2026-10-27",
+    scheduled: true,
+    snapshot: encodeFirestore(exemplar),
+    checks: {},
+  };
+  await setDoc(doc(db, "users/alice/progress", id), p);
+  const checks = Object.fromEntries(
+    exemplar.levels.flat().map((r) => [r.id, true]),
+  );
+  const late = {
+    lateLoggedAt: Date.now(),
+    lateRequirementsSource: "saved_session",
+  };
+  const batch = writeBatch(db);
+  batch.update(doc(db, "users/alice/progress", id), { checks, ...late });
+  for (const level of [1, 2, 3]) {
+    const winId = `${id}_T${level}`;
+    batch.set(doc(db, "users/alice/wins", winId), {
+      id: winId,
+      taskId: "a",
+      date: p.date,
+      level,
+      ...late,
+    });
+  }
+  await assertSucceeds(batch.commit());
+  await assertFails(
+    updateDoc(doc(db, "users/alice/progress", id), {
+      snapshot: encodeFirestore({ ...exemplar, name: "Rewritten" }),
+      ...late,
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "users/alice/progress", id), { lateLoggedAt: "invalid" }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "users/alice/progress", id), {
+      lateRequirementsSource: "invented",
+    }),
+  );
+  await assertFails(
+    updateDoc(
+      doc(
+        env.authenticatedContext("bob").firestore(),
+        "users/alice/progress",
+        id,
+      ),
+      { checks, ...late },
+    ),
+  );
+});
+
+test("New late sessions accept validated metadata and cannot forge wins without checks", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  await setDoc(doc(db, "users/alice/tasks/a"), task);
+  const id = "2026-10-27_a";
+  const late = {
+    lateLoggedAt: Date.now(),
+    lateRequirementsSource: "saved_history",
+  };
+  await assertSucceeds(
+    setDoc(doc(db, "users/alice/progress", id), {
+      id,
+      taskId: "a",
+      date: "2026-10-27",
+      scheduled: true,
+      snapshot: encodeFirestore(exemplar),
+      checks: {},
+      ...late,
+    }),
+  );
+  await assertFails(
+    setDoc(doc(db, `users/alice/wins/${id}_T3`), {
+      id: `${id}_T3`,
+      taskId: "a",
+      date: "2026-10-27",
+      level: 3,
+      ...late,
+    }),
+  );
+});
