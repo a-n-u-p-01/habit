@@ -11,9 +11,13 @@
     "test:rules": "firebase emulators:exec --only firestore --project demo-win-today 'node --test tests/rules.test.js'",
     "test:browser": "node tests/browser-smoke.mjs",
     "format": "prettier --write src tests vite.config.js index.html firebase.json firestore.indexes.json package.json",
-    "test:mobile": "node tests/mobile-layout.mjs"
+    "test:mobile": "node tests/mobile-layout.mjs",
+    "test:order": "node tests/habit-order.mjs"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "firebase": "^12.0.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",

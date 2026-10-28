@@ -41,6 +41,8 @@ import {
   dateKey,
   scheduled,
   completeNextLevel,
+  sortHabits,
+  applyHabitOrder,
 } from "./domain";
 const Context = createContext();
 const GROUPS = [
@@ -163,13 +165,93 @@ export function AppProvider({ children }) {
     ).catch((e) => setError(e.message));
     return () => unsub.forEach((fn) => fn());
   }, [user, authReady]);
-  const current = user ? data : guest;
+  const [orderOverride, setOrderOverride] = useState(null);
+  const [reordering, setReordering] = useState(false);
+  const raw = user ? data : guest;
+  const ownerKey = user?.uid || "guest";
+  const override = orderOverride?.owner === ownerKey ? orderOverride.ids : null;
+  const ranks = override && new Map(override.map((id, index) => [id, index]));
+  const current = {
+    ...raw,
+    tasks: sortHabits(
+      ranks
+        ? raw.tasks.map((h) =>
+            ranks.has(h.id) ? { ...h, orderIndex: ranks.get(h.id) } : h,
+          )
+        : raw.tasks,
+    ),
+  };
+  async function reorderHabits(ids) {
+    if (reordering) return;
+    const source = user ? current.tasks : guestRef.current.tasks;
+    const next = applyHabitOrder(source, ids);
+    if (!user) {
+      setGuest((d) => ({ ...d, tasks: applyHabitOrder(d.tasks, ids) }));
+      return;
+    }
+    if (ids.length > 450)
+      throw new Error(
+        "Reordering supports up to 450 habits in one atomic save.",
+      );
+    const owner = user.uid;
+    const change = { owner, ids };
+    setOrderOverride(change);
+    setReordering(true);
+    const batch = writeBatch(db);
+    next
+      .filter((h) => !h.deletedDay)
+      .forEach((h) =>
+        batch.update(doc(db, "users", owner, "tasks", h.id), {
+          orderIndex: h.orderIndex,
+          updatedAt: serverTimestamp(),
+        }),
+      );
+    const clear = () =>
+      setOrderOverride((previous) => (previous === change ? null : previous));
+    const commit = batch.commit();
+    if (!online) {
+      commit.then(clear).catch((e) => {
+        clear();
+        setError(`Habit order could not sync: ${e.message}`);
+      });
+      setNotice(
+        "Habit order saved on this device. It will sync when you reconnect.",
+      );
+      setReordering(false);
+      return;
+    }
+    try {
+      await commit;
+      clear();
+    } catch (e) {
+      clear();
+      setError(`Habit order was not saved: ${e.message}`);
+      throw e;
+    } finally {
+      setReordering(false);
+    }
+  }
   function fail(e) {
     setError(e?.message || String(e));
     throw e;
   }
   async function persist(group, id, payload, remove = false) {
     const value = clean({ ...payload, id });
+    if (group === "tasks" && !remove) {
+      const existing = (user ? current.tasks : guestRef.current.tasks).find(
+        (h) => h.id === id,
+      );
+      const greatest = Math.max(
+        -1,
+        ...current.tasks.map((h) =>
+          Number.isFinite(h.orderIndex) ? h.orderIndex : -1,
+        ),
+      );
+      if (Number.isFinite(existing?.orderIndex))
+        value.orderIndex = existing.orderIndex;
+      else if (!existing && !Number.isFinite(value.orderIndex))
+        value.orderIndex = greatest + 1;
+    }
     if (!user) {
       setGuest((d) => ({
         ...d,
@@ -473,6 +555,8 @@ export function AppProvider({ children }) {
         begin,
         check,
         winLevel,
+        reorderHabits,
+        reordering,
         publish,
         unpublish,
         importGuest,

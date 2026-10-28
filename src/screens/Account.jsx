@@ -1,3 +1,4 @@
+import { HabitOrderList } from "../HabitOrderList";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   BrowserRouter,
@@ -127,7 +128,7 @@ export function Profile() {
   async function remove(t) {
     if (
       !confirm(
-        "Delete this task from future days? Your past wins and sessions will remain.",
+        "Delete this habit from future days? Your past wins and sessions will remain.",
       )
     )
       return;
@@ -159,8 +160,8 @@ export function Profile() {
         <Stats
           items={[
             [stats.daysWon, "Days Won"],
-            [stats.tasksWon, "Tasks Won"],
-            [stats.t3, "T3 Wins"],
+            [stats.tasksWon, "Habits achieved"],
+            [stats.t3, "T3 badges"],
           ]}
         />
       </section>
@@ -180,48 +181,25 @@ export function Profile() {
       <div className="profile-layout">
         <section>
           <div className="section-heading">
-            <h2>My tasks</h2>
+            <h2>My habits</h2>
             <Link className="text-button" to="/tasks/new">
               <Plus size={16} />
               New
             </Link>
           </div>
-          {active.map((t) => (
-            <div className="panel manage-task" key={t.id}>
-              <CategoryIcon category={t.category} />
-              <div>
-                <h3>{t.name}</h3>
-                <small>
-                  {t.active === false
-                    ? "Taking a pause"
-                    : t.weekdays.map((d) => WEEKDAYS[d]).join(" · ")}
-                </small>
-              </div>
-              <button className="text-button" onClick={() => toggle(t)}>
-                {t.active === false ? "Resume" : "Pause"}
-              </button>
-              <Link
-                className="icon-button"
-                aria-label={`Edit ${t.name}`}
-                to={`/tasks/${t.id}/edit`}
-              >
-                <Edit3 size={17} />
-              </Link>
-              <button
-                className="icon-button danger"
-                aria-label={`Delete ${t.name}`}
-                onClick={() => remove(t)}
-              >
-                <Trash2 size={17} />
-              </button>
-            </div>
-          ))}
+          {active.length > 0 && (
+            <HabitOrderList
+              habits={active}
+              onPause={toggle}
+              onRemove={remove}
+            />
+          )}
           {!active.length && (
             <Empty
               title="Start smaller than you think"
               action={
                 <Link className="button" to="/tasks/new">
-                  Create a task
+                  Create a habit
                 </Link>
               }
             >
@@ -366,7 +344,7 @@ export function SettingsPage() {
             <Shield size={21} /> Your data belongs to you
           </h2>
           <p>
-            Google provides your name and photo. Private tasks, progress, and
+            Google provides your name and photo. Private habits, progress, and
             reflections stay inside your Firebase user boundary. Published
             templates, reviews, and adoption identifiers are public.
           </p>
@@ -457,22 +435,23 @@ export function Help() {
         <h2>Win Today, not finish everything.</h2>
         <p>
           T1 is the smallest meaningful promise you can keep even on a hard day.
-          Win T1, and the task is won. T2 and T3 add more effort only when you
-          want to.
+          Achieve your T1 badge, and your habit minimum is met. T2 and T3 add
+          more effort only when you want to.
         </p>
         <h3>Additional means additional.</h3>
         <p>
-          If T1 is 10 push-ups and T2 is +5, a bigger win is 15 push-ups in
-          total. You never repeat T1 inside T2.
+          If T1 is 10 push-ups and T2 is +5, a T2 badge represents 15 push-ups
+          in total. You never repeat T1 inside T2.
         </p>
         <h3>How does a day count as won?</h3>
         <p>
-          Win T1 on every task scheduled that day. An unscheduled rest day is
-          not a missed day, and days without tasks are not counted as wins.
+          Achieve a T1 badge on every habit scheduled that day. An unscheduled
+          rest day is not a missed day, and days without habits are not counted
+          as wins.
         </p>
         <h3>Can I change my mind?</h3>
         <p>
-          Yes. Pause, edit or remove tasks in My space. Existing daily sessions
+          Yes. Pause, edit or remove habits in My space. Existing daily sessions
           keep their original requirements. Schedule changes affect today and
           future days; old schedule versions are retained.
         </p>

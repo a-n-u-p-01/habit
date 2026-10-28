@@ -212,7 +212,7 @@ function Onboarding() {
             </div>
             <p>
               {example === 0
-                ? "Do this and your task is won. Anything more is a bonus."
+                ? "Do this to achieve your T1 badge. Anything more is optional."
                 : `These are additional sets, not totals. You've already earned T${example}.`}
             </p>
           </>
@@ -339,7 +339,7 @@ function Shell() {
           ))}
         </nav>
         <Link className="button" to="/tasks/new">
-          <Plus size={18} /> Create a task
+          <Plus size={18} /> Create a habit
         </Link>
         <div className="sidebar-bottom">
           <div className="panel quiet-quote">
@@ -394,8 +394,8 @@ function Shell() {
         </header>
         {!app.online && (
           <div className="banner">
-            You're offline. Cached tasks are available; new cloud task sessions
-            need a connection. Changes sync when you reconnect.
+            You're offline. Cached habits are available; new cloud habit
+            sessions need a connection. Changes sync when you reconnect.
           </div>
         )}
         {app.error && (

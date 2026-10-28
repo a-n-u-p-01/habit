@@ -42,7 +42,7 @@ test("Total work sums incremental levels rather than replacing them", () => {
   assert.equal(totals.find((t) => t.label === "Pull-ups").amount, 20);
   assert.equal(totals.find((t) => t.label === "Running").amount, 2);
 });
-test("No scheduled tasks is a rest day, not a free day won", () =>
+test("No scheduled habits is a rest day, not a free day won", () =>
   assert.equal(dayStatus([], [], "2026-10-27").dayWon, false));
 test("All minimums must be won to win a day", () =>
   assert.equal(
@@ -154,4 +154,65 @@ test("One-click tier action cannot skip T1 or jump from T1 to T3", async () => {
   assert.throws(() => completeNextLevel(row({ ex1: true, ex2: true }), 3));
   assert.throws(() => completeNextLevel(row({}), 0));
   assert.throws(() => completeNextLevel(row({}), 4));
+});
+
+test("Habit ranks sort stably without mutating legacy data", async () => {
+  const { sortHabits } = await import("../src/domain.js");
+  const old = [{ id: "b" }, { id: "a" }];
+  assert.deepEqual(
+    sortHabits(old).map((h) => h.id),
+    ["b", "a"],
+  );
+  const ranked = [
+    { id: "a", orderIndex: 2 },
+    { id: "b", orderIndex: 0 },
+    { id: "c", orderIndex: 1 },
+  ];
+  assert.deepEqual(
+    sortHabits(ranked).map((h) => h.id),
+    ["b", "c", "a"],
+  );
+  assert.equal(ranked[0].orderIndex, 2);
+});
+test("Reordering includes paused habits and preserves data/history", async () => {
+  const { applyHabitOrder, sortHabits } = await import("../src/domain.js");
+  const rows = [
+    { id: "a", active: true, levels: exemplar.levels },
+    {
+      id: "b",
+      active: false,
+      scheduleHistory: [{ from: "2026-10-27", active: false }],
+    },
+    { id: "old", deletedDay: "2026-10-26" },
+  ];
+  const next = applyHabitOrder(rows, ["b", "a"]);
+  assert.deepEqual(
+    sortHabits(next)
+      .filter((h) => !h.deletedDay)
+      .map((h) => h.id),
+    ["b", "a"],
+  );
+  assert.equal(next[1].active, false);
+  assert.deepEqual(next[1].scheduleHistory, rows[1].scheduleHistory);
+  assert.equal(next[0].levels, rows[0].levels);
+  assert.equal(rows[0].orderIndex, undefined);
+});
+test("Stale or duplicate reorder IDs are rejected without dropping habits", async () => {
+  const { applyHabitOrder } = await import("../src/domain.js");
+  const rows = [{ id: "a" }, { id: "b" }];
+  assert.throws(() => applyHabitOrder(rows, ["a", "a"]));
+  assert.throws(() => applyHabitOrder(rows, ["a"]));
+  assert.throws(() => applyHabitOrder(rows, ["a", "x"]));
+});
+test("Timeline rows follow the same habit order and move boundaries are safe", async () => {
+  const { sortByHabitOrder, moveHabit } = await import("../src/domain.js");
+  assert.deepEqual(
+    sortByHabitOrder(
+      [{ taskId: "a" }, { taskId: "c" }, { taskId: "b" }],
+      [{ id: "b" }, { id: "a" }, { id: "c" }],
+    ).map((p) => p.taskId),
+    ["b", "a", "c"],
+  );
+  assert.deepEqual(moveHabit(["a", "b", "c"], 2, 0), ["c", "a", "b"]);
+  assert.deepEqual(moveHabit(["a", "b"], 0, -1), ["a", "b"]);
 });

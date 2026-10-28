@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "checks": [
+    "move-buttons",
+    "keyboard-sort",
+    "desktop-pointer-drag",
+    "phone-touch-drag",
+    "refresh-persistence",
+    "enable-keeps-position",
+    "Today-order",
+    "Timeline-order",
+    "Week-order",
+    "Analytics-order",
+    "edit-keeps-position",
+    "badge-labels"
+  ],
+  "uncaughtErrors": []
+}

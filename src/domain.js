@@ -7,7 +7,7 @@ export const CATEGORIES = [
   "Career",
   "Life",
 ];
-export const LEVELS = ["Minimum Win", "Bigger Win", "Full Win"];
+export const LEVELS = ["Minimum badge", "Momentum badge", "Full effort badge"];
 export const dateKey = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 export const parseDate = (key) => new Date(`${key}T12:00:00`);
@@ -63,7 +63,7 @@ export function completeNextLevel(progress, target) {
   const requirements = progress?.snapshot?.levels?.[target - 1];
   if (!requirements?.length)
     throw new Error(
-      "This level has no requirements. Edit the task and try again.",
+      "This level has no requirements. Edit the habit and try again.",
     );
   return {
     ...progress,
@@ -122,7 +122,7 @@ export const newRequirement = () => ({
   unit: "reps",
 });
 export function validateTask(task) {
-  if (!task.name?.trim()) return "Give your task a name.";
+  if (!task.name?.trim()) return "Give your habit a name.";
   if (task.name.length > 80) return "Use a name under 80 characters.";
   if (!task.weekdays?.length) return "Choose at least one weekday.";
   if (!Array.isArray(task.levels) || task.levels.length !== 3)
@@ -207,3 +207,60 @@ export const starterTemplates = [
     ],
   },
 ];
+
+// A single, stable order is shared by every habit-based screen. Old data with
+// no rank retains its existing relative order until the user arranges it.
+export function sortHabits(habits) {
+  return habits
+    .map((habit, index) => ({ habit, index }))
+    .sort((a, b) => {
+      const ar = Number.isFinite(a.habit.orderIndex)
+        ? a.habit.orderIndex
+        : -Infinity;
+      const br = Number.isFinite(b.habit.orderIndex)
+        ? b.habit.orderIndex
+        : -Infinity;
+      return ar === br ? a.index - b.index : ar - br;
+    })
+    .map((row) => row.habit);
+}
+export function applyHabitOrder(habits, orderedIds) {
+  const visible = habits.filter((h) => !h.deletedDay);
+  const ids = new Set(orderedIds);
+  if (
+    ids.size !== orderedIds.length ||
+    ids.size !== visible.length ||
+    visible.some((h) => !ids.has(h.id))
+  )
+    throw new Error("The habit list changed. Please retry the reorder.");
+  const ranks = new Map(orderedIds.map((id, index) => [id, index]));
+  return habits.map((h) =>
+    ranks.has(h.id) ? { ...h, orderIndex: ranks.get(h.id) } : h,
+  );
+}
+export function moveHabit(ids, from, to) {
+  if (
+    !Number.isInteger(from) ||
+    !Number.isInteger(to) ||
+    from < 0 ||
+    to < 0 ||
+    from >= ids.length ||
+    to >= ids.length
+  )
+    return [...ids];
+  const next = [...ids];
+  const [id] = next.splice(from, 1);
+  next.splice(to, 0, id);
+  return next;
+}
+export function sortByHabitOrder(rows, habits, getId = (row) => row.taskId) {
+  const ranks = new Map(habits.map((h, index) => [h.id, index]));
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const ar = ranks.get(getId(a.row)) ?? Infinity,
+        br = ranks.get(getId(b.row)) ?? Infinity;
+      return ar === br ? a.index - b.index : ar - br;
+    })
+    .map((item) => item.row);
+}

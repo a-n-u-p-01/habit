@@ -35,16 +35,16 @@ export function TodayTaskCard({ task, progress, day }) {
       await app.winLevel(task, target, day);
       setMessage(
         target === 1
-          ? "T1 won. Your minimum is enough — the rest is optional."
+          ? "T1 badge achieved. Your minimum is enough — the rest is optional."
           : target === 2
-            ? "T2 won. A little extra, on your terms."
-            : "T3 won. You’re done for today.",
+            ? "T2 badge achieved. A little extra, on your terms."
+            : "T3 badge achieved. You’re done for today.",
       );
     } catch (e) {
       setError(
         e.code === "permission-denied"
           ? "Firebase denied this save. Check that the supplied Firestore rules are published for this project, then retry."
-          : e.message || "This win could not be saved. Please try again.",
+          : e.message || "This badge could not be saved. Please try again.",
       );
     } finally {
       setBusy(false);
@@ -74,10 +74,10 @@ export function TodayTaskCard({ task, progress, day }) {
           <p className="inline-level-status">
             {completed > 0 ? (
               <>
-                <Check size={14} /> T{completed} won · {LEVELS[completed - 1]}
+                <Check size={14} /> T{completed} badge achieved
               </>
             ) : (
-              "Ready for your minimum win"
+              "Ready for your T1 badge"
             )}
           </p>
         </div>
@@ -87,7 +87,7 @@ export function TodayTaskCard({ task, progress, day }) {
         <div className="today-task-next">
           <div className="inline-next-copy">
             <h4>
-              Next: T{nextLevel} · {LEVELS[nextLevel - 1]}
+              Next: T{nextLevel} badge
               {completed > 0 && (
                 <span className="optional-label">Optional</span>
               )}
@@ -109,16 +109,16 @@ export function TodayTaskCard({ task, progress, day }) {
             )}
             disabled={busy || settling}
             onClick={win}
-            aria-label={`Win T${nextLevel} for ${snapshot.name}`}
+            aria-label={`Achieve T${nextLevel} badge for ${snapshot.name}`}
           >
-            {busy ? "Saving…" : `Win T${nextLevel}`}
+            {busy ? "Saving…" : `Achieve T${nextLevel} badge`}
             {!busy && <ArrowRight size={17} />}
           </button>
         </div>
       ) : (
         <div className="inline-full-win">
           <Trophy size={18} />
-          <span>Full win. Nothing more to do today.</span>
+          <span>T3 badge achieved. Nothing more to do today.</span>
         </div>
       )}
       {error && (

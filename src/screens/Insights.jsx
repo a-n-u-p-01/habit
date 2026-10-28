@@ -167,7 +167,7 @@ export function Week() {
                       key={k}
                       title={
                         a
-                          ? `T${a} won`
+                          ? `T${a} badge achieved`
                           : !s
                             ? "Not scheduled"
                             : k > today
@@ -197,21 +197,21 @@ export function Week() {
         </table>
         {!visibleTasks.length && (
           <Empty title="A week of possibilities">
-            No scheduled tasks in this week.
+            No scheduled habits in this week.
           </Empty>
         )}
         <div className="legend">
           <span>
             <i className="legend-dot t1" />
-            Minimum win
+            T1 badge
           </span>
           <span>
             <i className="legend-dot t2" />
-            Bigger win
+            T2 badge
           </span>
           <span>
             <i className="legend-dot t3" />
-            Full win
+            T3 badge
           </span>
           <span>· A fresh start ahead</span>
           <span>— Not scheduled</span>
@@ -220,8 +220,8 @@ export function Week() {
       <Stats
         items={[
           [stats.daysWon, "Days Won"],
-          [stats.tasksWon, "Tasks Won"],
-          [stats.t3, "Full Wins"],
+          [stats.tasksWon, "Habits achieved"],
+          [stats.t3, "T3 badges"],
         ]}
       />
       <div className="panel reflection-callout">
@@ -296,8 +296,8 @@ export function Analytics() {
       <Stats
         items={[
           [s.daysWon, "Days Won"],
-          [s.tasksWon, "Tasks Won"],
-          [s.t3, "T3 Wins"],
+          [s.tasksWon, "Habits achieved"],
+          [s.t3, "T3 badges"],
         ]}
       />
       <div className="analytics-grid">
@@ -328,14 +328,14 @@ export function Analytics() {
                   : `${Math.abs(s.daysWon - previous.daysWon)} ${s.daysWon > previous.daysWon ? "more" : "fewer"} days won than the previous ${period} days.`}
               </p>
               <small>
-                No scheduled tasks? Rest days don't lower your rate.
+                No scheduled habits? Rest days don't lower your rate.
               </small>
             </div>
           </div>
         </section>
         <section className="panel chart-panel">
           <span className="eyebrow">HIGHEST LEVEL PER TASK-DAY</span>
-          <h2>Your wins, by level</h2>
+          <h2>Your badges, by level</h2>
           <div className="distribution">
             {s.distribution.map((n, i) => (
               <div key={i}>
@@ -352,7 +352,7 @@ export function Analytics() {
               </div>
             ))}
           </div>
-          <p className="muted">A minimum win is still a whole win.</p>
+          <p className="muted">A T1 badge is already enough for today.</p>
         </section>
         <section className="panel chart-panel">
           <span className="eyebrow">THE LAST 12 WEEKS</span>
@@ -364,8 +364,8 @@ export function Analytics() {
                 <div
                   key={k}
                   tabIndex={0}
-                  title={`${parseDate(k).toLocaleDateString()}: ${d.won}/${d.total} tasks won`}
-                  aria-label={`${k}: ${d.won} of ${d.total} tasks won`}
+                  title={`${parseDate(k).toLocaleDateString()}: ${d.won}/${d.total} habits achieved`}
+                  aria-label={`${k}: ${d.won} of ${d.total} habits achieved`}
                   className={cx(
                     "heat-cell",
                     d.dayWon ? "heat-won" : d.won ? "heat-some" : "",
@@ -384,7 +384,7 @@ export function Analytics() {
         </section>
         <section className="panel chart-panel">
           <span className="eyebrow">SHOWING UP, YOUR WAY</span>
-          <h2>Task consistency</h2>
+          <h2>Habit consistency</h2>
           {consistency.length ? (
             consistency.map((t) => (
               <div className="consistency" key={t.id}>
@@ -403,7 +403,7 @@ export function Analytics() {
             ))
           ) : (
             <p className="muted">
-              Your task history will grow here. No need to rush.
+              Your habit history will grow here. No need to rush.
             </p>
           )}
         </section>
@@ -494,8 +494,8 @@ export function WeeklyReview() {
       <Stats
         items={[
           [stats.daysWon, "Days Won"],
-          [stats.tasksWon, "Tasks Won"],
-          [stats.t3, "Full Wins"],
+          [stats.tasksWon, "Habits achieved"],
+          [stats.t3, "T3 badges"],
         ]}
       />
       <div className="detail-layout">

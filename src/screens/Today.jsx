@@ -1,3 +1,4 @@
+import { sortByHabitOrder } from "../domain";
 import { TodayTaskCard } from "../TodayTaskCard";
 import React, { useState, useEffect, useMemo } from "react";
 import {
@@ -113,7 +114,7 @@ export function Today() {
       >
         <Link className="button secondary compact desktop-only" to="/tasks/new">
           <Plus size={17} />
-          New task
+          New habit
         </Link>
       </PageTitle>
       <section className="today-hero">
@@ -129,7 +130,7 @@ export function Today() {
           <p>Your minimum is enough. The rest is a bonus.</p>
           <div className="hero-progress">
             <div>
-              <span>Today's wins</span>
+              <span>Today's habits</span>
               <strong>
                 {status.won}
                 <small> / {status.total}</small>
@@ -159,14 +160,14 @@ export function Today() {
         <section>
           <div className="section-heading">
             <h2>
-              Your day, one win at a time <span>{todayTasks.length}</span>
+              Your day, one badge at a time <span>{todayTasks.length}</span>
             </h2>
             <div className="tabs small-tabs">
               <button
                 className={view === "tasks" ? "selected" : ""}
                 onClick={() => setView("tasks")}
               >
-                Tasks
+                Habits
               </button>
               <button
                 className={view === "timeline" ? "selected" : ""}
@@ -178,23 +179,23 @@ export function Today() {
           </div>
           <div className="task-list">
             {view === "timeline"
-              ? progress
-                  .filter((p) => p.date === key)
-                  .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
-                  .map((p) => (
-                    <div className="task-card" key={p.id}>
-                      <CategoryIcon category={p.snapshot.category} />
-                      <div className="task-copy">
-                        <h3>{p.snapshot.name}</h3>
-                        <p>
-                          {achieved(p)
-                            ? `${LEVELS[achieved(p) - 1]} earned`
-                            : "You showed up. Keep going."}
-                        </p>
-                      </div>
-                      {achieved(p) > 0 && <Tier level={achieved(p)} />}
+              ? sortByHabitOrder(
+                  progress.filter((p) => p.date === key),
+                  tasks,
+                ).map((p) => (
+                  <div className="task-card" key={p.id}>
+                    <CategoryIcon category={p.snapshot.category} />
+                    <div className="task-copy">
+                      <h3>{p.snapshot.name}</h3>
+                      <p>
+                        {achieved(p)
+                          ? `T${achieved(p)} badge achieved`
+                          : "You showed up. Keep going."}
+                      </p>
                     </div>
-                  ))
+                    {achieved(p) > 0 && <Tier level={achieved(p)} />}
+                  </div>
+                ))
               : todayTasks.map((t) => (
                   <TodayTaskCard
                     key={t.id}
@@ -221,15 +222,15 @@ export function Today() {
                     onClick={() => setView("tasks")}
                   >
                     {view === "tasks"
-                      ? "Create your first task"
-                      : "See today’s tasks"}
+                      ? "Create your first habit"
+                      : "See today’s habits"}
                     <Plus size={17} />
                   </Link>
                 }
               >
                 {view === "tasks"
-                  ? "No tasks scheduled for today. Add an achievable minimum, or take a well-earned rest."
-                  : "Start a task to begin your timeline."}
+                  ? "No habits scheduled for today. Add an achievable minimum, or take a well-earned rest."
+                  : "Start a habit to begin your timeline."}
               </Empty>
             )}
           </div>

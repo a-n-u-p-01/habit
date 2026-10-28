@@ -43,7 +43,7 @@ const publicTemplate = encodeFirestore({
   published: true,
   updatedAt: 1,
 });
-test("Owner can write private task; others and anonymous cannot read or write", async () => {
+test("Owner can write private habit; others and anonymous cannot read or write", async () => {
   const a = env.authenticatedContext("alice").firestore(),
     b = env.authenticatedContext("bob").firestore(),
     anon = env.unauthenticatedContext().firestore();
@@ -121,7 +121,7 @@ test("Cannot forge a T3 win without requirements", async () => {
   });
   await assertSucceeds(batch.commit());
 });
-test("Snapshot cannot be rewritten after starting a task", async () => {
+test("Snapshot cannot be rewritten after starting a habit", async () => {
   const a = env.authenticatedContext("alice").firestore();
   await setDoc(doc(a, "users/alice/tasks/a"), task);
   const p = {
@@ -242,4 +242,26 @@ test("Inline multi-requirement tier wins merge safely and satisfy unchanged rule
     }
     p = stored;
   }
+});
+
+test("Habit reorder batch preserves fields and is owner-only without new rules", async () => {
+  const a = env.authenticatedContext("alice").firestore(),
+    b = env.authenticatedContext("bob").firestore();
+  await setDoc(doc(a, "users/alice/tasks/a"), { ...task, orderIndex: 0 });
+  await setDoc(doc(a, "users/alice/tasks/b"), {
+    ...task,
+    id: "b",
+    active: false,
+    orderIndex: 1,
+  });
+  const batch = writeBatch(a);
+  batch.update(doc(a, "users/alice/tasks/a"), { orderIndex: 1 });
+  batch.update(doc(a, "users/alice/tasks/b"), { orderIndex: 0 });
+  await assertSucceeds(batch.commit());
+  const moved = (await getDoc(doc(a, "users/alice/tasks/b"))).data();
+  if (moved.orderIndex !== 0 || moved.active !== false)
+    throw new Error("Ordering changed habit state");
+  const forged = writeBatch(b);
+  forged.update(doc(b, "users/alice/tasks/a"), { orderIndex: 0 });
+  await assertFails(forged.commit());
 });

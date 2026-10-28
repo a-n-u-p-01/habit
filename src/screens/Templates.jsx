@@ -307,7 +307,7 @@ export function Templates() {
                       onClick={async () => {
                         if (
                           !confirm(
-                            "Delete this personal template? Existing task copies will remain.",
+                            "Delete this personal template? Existing habit copies will remain.",
                           )
                         )
                           return;

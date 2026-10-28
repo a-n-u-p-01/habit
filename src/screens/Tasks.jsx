@@ -121,10 +121,10 @@ export function TaskEditor({ templateMode = false }) {
   if (id && !source)
     return (
       <Empty
-        title="Task not found"
+        title="Habit not found"
         action={
           <Link className="button" to="/profile">
-            My tasks
+            My habits
           </Link>
         }
       >
@@ -192,13 +192,13 @@ export function TaskEditor({ templateMode = false }) {
       await app.persist(templateMode ? "templates" : "tasks", taskId, value);
       if (!templateMode && !id && source?.id)
         await recordUsage(source.id, app.user).catch(() =>
-          app.setNotice("Task saved. Template usage could not sync."),
+          app.setNotice("Habit saved. Template usage could not sync."),
         );
       app.setNotice(
         templateMode
           ? "Personal template saved. Publish it from My Templates when ready."
           : id
-            ? "Task updated. Past sessions keep their original levels."
+            ? "Habit updated. Past sessions keep their original levels."
             : "A small promise, ready for you.",
       );
       navigate(templateMode ? "/templates?tab=mine" : "/");
@@ -213,14 +213,14 @@ export function TaskEditor({ templateMode = false }) {
       <PageTitle
         back={templateMode ? "/templates" : "/profile"}
         eyebrow={templateMode ? "YOUR OWN BLUEPRINT" : "MAKE IT ACHIEVABLE"}
-        title={`${id ? "Edit" : source ? "Customize" : "Create"} ${templateMode ? "template" : "task"}`}
+        title={`${id ? "Edit" : source ? "Customize" : "Create"} ${templateMode ? "template" : "habit"}`}
       />
       <form className="editor-layout" onSubmit={save}>
         <div className="editor-main">
           <section className="panel form-section">
             <h2>A small promise to yourself</h2>
             <label>
-              Task name
+              Habit name
               <input
                 maxLength={80}
                 value={form.name}
@@ -283,7 +283,7 @@ export function TaskEditor({ templateMode = false }) {
                   <h2>{LEVELS[i]}</h2>
                   <p>
                     {i === 0
-                      ? "Small enough for a hard day. This alone is a win."
+                      ? "Small enough for a hard day. This earns your T1 badge."
                       : `Only additional effort after T${i}. Always optional.`}
                   </p>
                 </div>
@@ -387,7 +387,7 @@ export function TaskEditor({ templateMode = false }) {
             <button disabled={saving} className="button">
               {saving
                 ? "Saving…"
-                : `Save ${templateMode ? "template" : "task"}`}
+                : `Save ${templateMode ? "template" : "habit"}`}
               <Check size={17} />
             </button>
             <button
@@ -450,14 +450,14 @@ export function TaskFlow() {
   if (!task)
     return (
       <Empty
-        title="Task not found"
+        title="Habit not found"
         action={
           <Link className="button" to="/">
             Today
           </Link>
         }
       >
-        This task is no longer available.
+        This habit is no longer available.
       </Empty>
     );
   if (!p)
@@ -526,8 +526,8 @@ export function TaskFlow() {
                   <h2>{LEVELS[level - 1]}</h2>
                   <p>
                     {level === 1
-                      ? "Do these to win this task today."
-                      : "Only these extra steps. Your minimum is already won."}
+                      ? "Do these to achieve your T1 badge today."
+                      : "Only these extra steps. Your T1 badge is already achieved."}
                   </p>
                 </div>
               </div>
@@ -561,7 +561,7 @@ export function TaskFlow() {
                 <p>
                   {level === 1
                     ? "Keep it easy. Take short breaks if you need to. Mark each requirement once you have done it."
-                    : `You've already won T1. These are extras, never obligations.`}
+                    : `Your T1 badge is already achieved. These are extras, never obligations.`}
                 </p>
               </div>
               <button
@@ -585,12 +585,10 @@ export function TaskFlow() {
                     ? "A LITTLE EXTRA MOMENTUM"
                     : "YOU WENT THE EXTRA MILE"}
               </span>
-              <h2>
-                {a === 1 ? "Task Won!" : a === 2 ? "Bigger Win!" : "Full Win!"}
-              </h2>
+              <h2>{`T${a} badge achieved!`}</h2>
               <p>
                 {a === 1
-                  ? "Your minimum is won. That is enough."
+                  ? "Your T1 badge is achieved. That is enough."
                   : a === 2
                     ? "More than your minimum. Be proud of that."
                     : "You showed up. You went all the way."}
@@ -621,7 +619,7 @@ export function TaskFlow() {
                 className="text-button"
                 onClick={() => setPhase("summary")}
               >
-                View my task summary
+                View my habit summary
                 <ArrowRight size={15} />
               </button>
             </div>
@@ -634,7 +632,7 @@ export function TaskFlow() {
                   <div className="panel" key={i}>
                     <Tier level={i + 1} />
                     <div>
-                      <h3>{LEVELS[i]} won</h3>
+                      <h3>T{i + 1} badge achieved</h3>
                       <p>
                         {rr
                           .map(

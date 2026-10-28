@@ -3456,3 +3456,115 @@ input[type="checkbox"] {
     font-size: 14px;
   }
 }
+
+/* Arrangement lives beside habit edit/pause/enable controls. Only the grip
+   consumes touch gestures; the rest of each card still scrolls normally. */
+.habit-order-hint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 0 18px;
+}
+.habit-order-list {
+  position: relative;
+}
+.manage-task.habit-sortable {
+  display: grid;
+  grid-template-columns: 38px 38px minmax(0, 1fr);
+  gap: 12px;
+  padding: 18px;
+  position: relative;
+}
+.habit-sortable > .habit-drag-handle {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  touch-action: none;
+  cursor: grab;
+}
+.habit-sortable.is-dragging {
+  box-shadow: 0 15px 45px #0005;
+  border-color: var(--purple);
+  background: var(--surface2);
+}
+.habit-sortable.is-dragging .habit-drag-handle {
+  cursor: grabbing;
+}
+.habit-sortable > .category-icon {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+.habit-sortable > .habit-row-copy {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 0;
+}
+.habit-sortable > .habit-row-actions {
+  grid-row: 2;
+  grid-column: 2 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.habit-move-buttons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: auto;
+}
+.habit-order-status {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.habit-order-status:not(:empty) {
+  margin: 14px 0;
+}
+.habit-row-copy h3 {
+  overflow-wrap: anywhere;
+}
+.habit-row-copy small {
+  white-space: normal;
+}
+@media (max-width: 760px) {
+  .habit-order-hint,
+  .habit-order-status {
+    font-size: 14px;
+  }
+  .manage-task.habit-sortable {
+    grid-template-columns: 44px 38px minmax(0, 1fr);
+    gap: 12px 8px;
+    padding: 20px 14px;
+  }
+  .habit-sortable > .habit-row-copy {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .habit-sortable > .category-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .habit-sortable > .habit-row-actions {
+    grid-column: 1 / -1;
+    gap: 8px;
+  }
+  .habit-sortable .habit-row-actions .text-button {
+    grid-column: auto;
+    font-size: 14px;
+  }
+  .habit-sortable .icon-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+  }
+  .habit-sortable .habit-row-copy h3 {
+    font-size: 18px;
+  }
+  .habit-sortable .habit-row-copy small {
+    font-size: 13px;
+  }
+  .inline-win-button {
+    white-space: normal;
+  }
+}
