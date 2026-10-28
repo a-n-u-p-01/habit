@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "checks": [
+    "Compact card with right-side tier action",
+    "Modal shows all selected-tier tasks",
+    "No progress on open, radio, cancel or Escape",
+    "Required confirmation before completion",
+    "Confirmation resets on reopen",
+    "Keyboard focus return",
+    "Double-submit safety",
+    "All requirements saved for only the reviewed tier",
+    "Optional T2/T3 use same modal",
+    "Completed cards stay compact",
+    "Mobile dialog and light/dark themes",
+    "Persistence"
+  ]
+}

@@ -74,68 +74,75 @@ const card = page.getByRole("article", {
   exact: true,
 });
 const homeUrl = page.url();
-await card
-  .getByRole("button", {
-    name: "Mark minimum done for Morning movement",
-    exact: true,
-  })
-  .click();
+const modal = page.getByRole("dialog");
+const openTier = (tier) =>
+  card
+    .getByRole("button", {
+      name: `Complete T${tier} for Morning movement`,
+      exact: true,
+    })
+    .click();
+const confirm = async () => {
+  await modal
+    .getByRole("radio", {
+      name: "I completed all the tasks above.",
+      exact: true,
+    })
+    .check();
+  await modal.getByRole("button", { name: "Complete", exact: true }).click();
+  await expect(modal).toHaveCount(0);
+};
+await openTier(1);
+await expect(modal.locator(".completion-task-list")).toContainText("10 reps");
+await expect(
+  modal.getByRole("button", { name: "Complete", exact: true }),
+).toBeDisabled();
+await confirm();
 await expect(card.locator(".inline-level-status")).toContainText(
   "Minimum done",
 );
 await expect(card.locator(".tier")).toHaveText("T1");
-await expect(card.locator(".today-task-next")).toBeHidden();
+await expect(card.locator(".habit-card-optional")).toHaveText("Optional");
 await expect(
   page.getByRole("progressbar", { name: "Today's minimums completed" }),
 ).toHaveAttribute("value", "1");
 assert.equal(page.url(), homeUrl);
-const extra = () =>
-  card.getByRole("button", {
-    name: "Optional extra for Morning movement",
+await card
+  .getByRole("button", {
+    name: "Complete T2 for Morning movement",
     exact: true,
-  });
-await extra().click();
-await expect(card.locator(".inline-next-copy")).toContainText("Next: T2");
-await expect(card.locator(".inline-next-copy")).toContainText("+ 5");
-await expect(card.locator(".optional-label")).toHaveText("Optional");
-await page.reload();
-await expect(card.locator(".inline-level-status")).toContainText(
-  "Minimum done",
-);
-await expect(card.locator(".today-task-next")).toBeHidden();
-await extra().focus();
+  })
+  .focus();
 await page.keyboard.press("Enter");
-await expect(card.locator(".today-task-next")).toBeVisible();
-await card
-  .getByRole("button", {
-    name: "Hide optional extra for Morning movement",
+await expect(modal.locator(".completion-task-list")).toContainText("+ 5 reps");
+await page.keyboard.press("Escape");
+await expect(modal).toHaveCount(0);
+await expect(
+  card.getByRole("button", {
+    name: "Complete T2 for Morning movement",
     exact: true,
-  })
-  .press("Space");
-await expect(card.locator(".today-task-next")).toBeHidden();
-await extra().click();
-await card
-  .getByRole("button", {
-    name: "Achieve T2 badge for Morning movement",
-    exact: true,
-  })
-  .dblclick();
+  }),
+).toBeFocused();
+await page.reload();
+await expect(card.locator(".tier")).toHaveText("T1");
+await openTier(2);
+await expect(modal.getByRole("radio")).not.toBeChecked();
+await modal.getByRole("radio").check();
+await modal
+  .getByRole("button", { name: "Complete", exact: true })
+  .evaluate((button) => {
+    button.click();
+    button.click();
+  });
+await expect(modal).toHaveCount(0);
 await expect(card.locator(".tier")).toHaveText("T2");
-await expect(card.locator(".today-task-next")).toBeHidden();
-await extra().click();
-await expect(card.locator(".inline-next-copy")).toContainText("Next: T3");
 assert.equal(page.url(), homeUrl);
-await card
-  .getByRole("button", {
-    name: "Achieve T3 badge for Morning movement",
-    exact: true,
-  })
-  .click();
+await openTier(3);
+await expect(modal.getByRole("radio")).not.toBeChecked();
+await confirm();
 await expect(card.locator(".tier")).toHaveText("T3");
 await expect(card.getByRole("button")).toHaveCount(0);
-await expect(card.locator(".inline-full-win")).toContainText(
-  "Nothing more to do today",
-);
+await expect(card.locator(".inline-full-win")).toContainText("All done");
 assert.equal(page.url(), homeUrl);
 await page.reload();
 await expect(card.locator(".inline-level-status")).toContainText(
@@ -229,16 +236,16 @@ writeFileSync(
         "onboarding",
         "task-create",
         "today-has-no-timeline-or-view-switch",
-        "inline-T1-win-no-navigation",
-        "inline-T2-double-click-safety",
-        "inline-T3-with-no-extra-action",
+        "modal-T1-confirmation-no-navigation",
+        "modal-T2-double-click-safety",
+        "modal-T3-all-done",
         "incremental-total",
         "refresh-persistence",
         "day-won",
-        "optional-extras-collapsed-after-completion-and-refresh",
+        "compact-optional-tier-action",
         "daily-progress-bar-updates",
         "today-empty-state-and-shortcuts",
-        "optional-extra-keyboard-controls",
+        "modal-keyboard-controls-and-focus-return",
         "weekly-grid",
         "analytics",
         "template-customization",

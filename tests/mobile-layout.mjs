@@ -90,27 +90,25 @@ for (const theme of ["dark", "light"]) {
         await expect(
           page.locator(".today-hero,.reminder-card,.review-link"),
         ).toHaveCount(0);
-        await expect(
-          page.locator(".today-task-card").first().locator(".today-task-next"),
-        ).toBeHidden();
+        await expect(page.locator(".today-task-next")).toHaveCount(0);
         await expect(
           page.getByRole("button", {
-            name: "Optional extra for Morning movement",
+            name: "Complete T2 for Morning movement",
             exact: true,
           }),
-        ).toHaveAttribute("aria-expanded", "false");
+        ).toHaveAttribute("aria-haspopup", "dialog");
         assert.deepEqual(
           await page.locator(".today-task-card h3").allTextContents(),
           tasks.map((t) => t.name),
         );
         const controls = await page
-          .locator(".today-shortcuts a,.optional-extra-toggle")
+          .locator(".today-shortcuts a,.habit-card-action .button")
           .evaluateAll((nodes) =>
             nodes.map((node) => node.getBoundingClientRect().height),
           );
         assert.ok(
           controls.every((height) => height >= 44),
-          "Today shortcuts and optional-extra controls need 44px touch targets",
+          "Today shortcuts and completion controls need 44px touch targets",
         );
       }
       const metrics = await page.evaluate(() => {
