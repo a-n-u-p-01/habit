@@ -60,10 +60,13 @@ async function openPage(account, path) {
     serviceWorkers: "block",
   });
   await context.addInitScript(() => localStorage.setItem("win-onboarded", "1"));
-  let authModule;
-  await context.route("**/src/firebase.js", async (route) => {
+  let authModule, firebaseModule, firestoreModule;
+  await context.route("**/src/firebase.js*", async (route) => {
+    const moduleURL = new URL(route.request().url());
+    firebaseModule = moduleURL.pathname + moduleURL.search;
     const response = await route.fetch();
     let source = await response.text();
+    firestoreModule = source.match(/from "([^"]*firebase_firestore[^"]*)"/)[1];
     authModule = source.match(/from "([^"]*firebase_auth[^\"]*)"/)[1];
     source = source
       .replace(
@@ -71,8 +74,8 @@ async function openPage(account, path) {
         "connectAuthEmulator, getAuth, GoogleAuthProvider",
       )
       .replace(
-        "  initializeFirestore,",
-        "  connectFirestoreEmulator, initializeFirestore,",
+        "initializeFirestore,",
+        "connectFirestoreEmulator, initializeFirestore,",
       )
       .replace('projectId: "habit-builder-f86b4"', `projectId: "${projectId}"`);
     source +=
@@ -84,15 +87,32 @@ async function openPage(account, path) {
   await page.goto(`${baseURL}${path}`);
   if (account) {
     await page.evaluate(
-      async ({ email, password, authModule }) => {
-        const { auth } = await import("/src/firebase.js");
+      async ({ email, password, authModule, firebaseModule }) => {
+        const { auth } = await import(firebaseModule);
         const { signInWithEmailAndPassword } = await import(authModule);
         await signInWithEmailAndPassword(auth, email, password);
       },
-      { email: account.email, password, authModule },
+      { email: account.email, password, authModule, firebaseModule },
     );
   }
-  return { page, context };
+  return {
+    page,
+    context,
+    syncGroup: async (group) =>
+      page.evaluate(
+        async ({ group, firebaseModule, firestoreModule, uid }) => {
+          const { db } = await import(firebaseModule);
+          const { collection, getDocsFromServer } = await import(
+            firestoreModule
+          );
+          await getDocsFromServer(collection(db, "users", uid, group));
+          await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          );
+        },
+        { group, firebaseModule, firestoreModule, uid: account.uid },
+      ),
+  };
 }
 try {
   await env.clearFirestore();
@@ -370,6 +390,53 @@ try {
       1,
     );
   });
+  await normal.page
+    .getByRole("button", {
+      name: "Complete T1 for Cloud reading habit",
+      exact: true,
+    })
+    .click();
+  const completion = normal.page.getByRole("dialog");
+  await expect(
+    completion.getByRole("button", { name: "Complete", exact: true }),
+  ).toBeDisabled();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    assert.equal(
+      (
+        await getDocs(
+          collection(ctx.firestore(), "users", member.uid, "progress"),
+        )
+      ).size,
+      0,
+      "Opening a completion modal must not create progress",
+    );
+  });
+  await completion
+    .getByRole("radio", {
+      name: "I completed all the tasks above.",
+      exact: true,
+    })
+    .check();
+  await completion
+    .getByRole("button", { name: "Complete", exact: true })
+    .evaluate((button) => {
+      button.click();
+      button.click();
+    });
+  await expect(completion).toHaveCount(0);
+  await expect(
+    normal.page
+      .getByRole("article", { name: "Cloud reading habit", exact: true })
+      .locator(".tier"),
+  ).toHaveText("T1");
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    assert.equal(
+      (await getDocs(collection(ctx.firestore(), "users", member.uid, "wins")))
+        .size,
+      1,
+      "One confirmation can only award its reviewed tier",
+    );
+  });
   // Exercise both existing-session updates and new-session creation for past dates.
   const pastDay = daysBack(2)[0],
     createdDay = daysBack(8)[0];
@@ -429,6 +496,7 @@ try {
   await normal.page
     .getByRole("heading", { name: "Your week, in small wins.", exact: true })
     .waitFor();
+  await normal.syncGroup("progress");
   if (!weekDates().includes(pastDay))
     await normal.page
       .getByRole("button", { name: "Previous week", exact: true })
@@ -531,6 +599,7 @@ try {
           "Cloud private template reuse without duplication or public publication",
           "Cloud past-day correction preserves original session",
           "Cloud past-day creation restores historical requirements",
+          "Confirmed completion modal saves only its reviewed cloud tier",
           "No browser exceptions",
         ],
       },

@@ -17,6 +17,7 @@
     "Cloud private template reuse without duplication or public publication",
     "Cloud past-day correction preserves original session",
     "Cloud past-day creation restores historical requirements",
+    "Confirmed completion modal saves only its reviewed cloud tier",
     "No browser exceptions"
   ]
 }

@@ -177,10 +177,7 @@ await expect(page.locator(".inline-level-status").first()).toContainText(
   "Minimum done",
 );
 await expect(
-  page.getByRole("button", { name: "Achieve T2 badge for Gamma", exact: true }),
-).toHaveCount(0);
-await expect(
-  page.getByRole("button", { name: "Optional extra for Gamma", exact: true }),
+  page.getByRole("button", { name: "Complete T2 for Gamma", exact: true }),
 ).toBeVisible();
 await expect(
   page.getByRole("button", { name: "Timeline", exact: true }),

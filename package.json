@@ -13,6 +13,7 @@
     "test:browser": "node tests/browser-smoke.mjs",
     "format": "prettier --write src tests vite.config.js index.html firebase.json firestore.indexes.json package.json",
     "test:creation": "node tests/habit-creation.mjs",
+    "test:cards": "node tests/compact-cards.mjs",
     "test:past": "node tests/past-completion.mjs",
     "test:daily": "node tests/daily-loop.mjs",
     "test:mobile": "node tests/mobile-layout.mjs",

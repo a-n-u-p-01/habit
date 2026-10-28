@@ -74,9 +74,7 @@ try {
   await expect(page.locator(".today-summary")).toContainText(
     "1 minimum done. Keep going at your own pace.",
   );
-  await expect(page.locator(".minimum-completion-hint").first()).toContainText(
-    "Do these first",
-  );
+  await expect(page.locator(".today-task-next")).toHaveCount(0);
   assert.equal(
     (await stored(page)).progress.length,
     1,
@@ -84,21 +82,16 @@ try {
   );
   const before = JSON.stringify((await stored(page)).progress);
   await page
-    .getByRole("button", {
-      name: "Optional extra for Already done",
-      exact: true,
-    })
+    .getByRole("button", { name: "Complete T2 for Already done", exact: true })
     .click();
   assert.equal(
     JSON.stringify((await stored(page)).progress),
     before,
-    "Opening optional extras must not earn progress",
+    "Opening completion dialog must not earn progress",
   );
   await page
-    .getByRole("button", {
-      name: "Hide optional extra for Already done",
-      exact: true,
-    })
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cancel", exact: true })
     .click();
   mkdirSync("screenshots", { recursive: true });
   await page.screenshot({
@@ -120,7 +113,7 @@ try {
     assert.ok(
       await page
         .getByRole("button", {
-          name: "Mark minimum done for Read a page",
+          name: "Complete T1 for Read a page",
           exact: true,
         })
         .evaluate((node) => node.getBoundingClientRect().height >= 44),
@@ -128,10 +121,16 @@ try {
   }
   await page
     .getByRole("button", {
-      name: "Mark minimum done for Read a page",
+      name: "Complete T1 for Read a page",
       exact: true,
     })
     .click();
+  await page.getByRole("dialog").getByRole("radio").check();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Complete", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator(".suggested-habit h3")).toHaveText("Move a little");
   await expect(page.locator(".today-summary")).toContainText(
     "2 minimums done. Keep going at your own pace.",
@@ -139,10 +138,16 @@ try {
   await expect(page.locator(".today-task-card h3")).toHaveText(names);
   await page
     .getByRole("button", {
-      name: "Mark minimum done for Move a little",
+      name: "Complete T1 for Move a little",
       exact: true,
     })
     .click();
+  await page.getByRole("dialog").getByRole("radio").check();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Complete", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator(".suggested-habit")).toHaveCount(0);
   await expect(page.locator(".day-won")).toBeVisible();
   await expect(page.locator(".today-summary")).toContainText(

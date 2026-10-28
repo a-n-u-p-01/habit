@@ -1,76 +1,55 @@
-import { useEffect, useId, useRef, useState } from "react";
-import { Check, ArrowRight, ChevronDown, Trophy } from "lucide-react";
-import { CategoryIcon, Tier, RequirementText, cx } from "./components";
+import { useRef, useState } from "react";
+import { Check } from "lucide-react";
+import { CategoryIcon, Tier, cx } from "./components";
 import { achieved } from "./domain";
-import { useApp } from "./store";
+import { HabitCompletionDialog } from "./HabitCompletionDialog";
 
-// Today is the action surface: no route change, checklist, or modal required.
 export function TodayTaskCard({ task, progress, day, suggested = false }) {
-  const app = useApp();
-  const [busy, setBusy] = useState(false);
-  const [settling, setSettling] = useState(false);
-  const unlockTimer = useRef(null);
-  useEffect(() => () => clearTimeout(unlockTimer.current), []);
-  const [error, setError] = useState("");
+  const card = useRef(null);
+  const [selection, setSelection] = useState(null);
   const [message, setMessage] = useState("");
-  const locked = useRef(false);
   const completed = achieved(progress);
-  const extraId = useId();
-  const hintId = `${extraId}-minimum-hint`;
-  const [expandedLevel, setExpandedLevel] = useState(null);
-  const extraOpen = completed > 0 && expandedLevel === completed;
-  const nextLevel = completed + 1;
   const snapshot = progress?.snapshot || task;
-  const remaining =
-    completed < 3
-      ? snapshot.levels[completed].filter((r) => !progress?.checks?.[r.id])
-      : [];
-
-  async function win() {
-    if (locked.current || completed === 3) return;
-    locked.current = true;
-    setBusy(true);
-    setError("");
+  function open() {
+    if (completed >= 3) return;
     setMessage("");
-    // Capture the displayed target: retries/double clicks must never award
-    // an unintended extra level when another device has already won this one.
-    const target = nextLevel;
-    try {
-      await app.winLevel(task, target, day);
-      setMessage(
-        target === 1
-          ? "T1 badge achieved. Your minimum is enough — the rest is optional."
-          : target === 2
-            ? "T2 badge achieved. A little extra, on your terms."
-            : "T3 badge achieved. You’re done for today.",
-      );
-    } catch (e) {
-      setError(
-        e.code === "permission-denied"
-          ? "Firebase denied this save. Check that the supplied Firestore rules are published for this project, then retry."
-          : e.message || "This badge could not be saved. Please try again.",
-      );
-    } finally {
-      setBusy(false);
-      setSettling(true);
-      unlockTimer.current = setTimeout(() => {
-        locked.current = false;
-        setSettling(false);
-      }, 400);
-    }
+    // Freeze exactly what the user is about to review, without creating a
+    // progress record or changing any checks merely by opening the dialog.
+    setSelection(
+      JSON.parse(
+        JSON.stringify({
+          task,
+          snapshot,
+          checks: progress?.checks || {},
+          target: completed + 1,
+          day,
+        }),
+      ),
+    );
   }
-
+  function finish(target) {
+    setSelection(null);
+    setMessage(
+      target === 1
+        ? "T1 complete. Your minimum is done."
+        : `T${target} complete. ${target === 3 ? "All done for today." : "The next extra is optional."}`,
+    );
+    if (target === 3)
+      requestAnimationFrame(() => card.current?.focus({ preventScroll: true }));
+  }
   return (
     <article
+      ref={card}
+      tabIndex={-1}
       className={cx(
         "task-card",
         "today-task-card",
+        "compact-habit-card",
         suggested && completed === 0 && "suggested-habit",
         completed > 0 && "task-won",
         completed === 3 && "all-tiers-won",
       )}
       aria-label={snapshot.name}
-      aria-busy={busy}
     >
       <div className="today-task-heading">
         <CategoryIcon category={snapshot.category} />
@@ -82,89 +61,36 @@ export function TodayTaskCard({ task, progress, day, suggested = false }) {
           <p className="inline-level-status">
             {completed > 0 ? (
               <>
-                <Check size={14} /> Minimum done
+                <Check size={14} /> Minimum done <Tier level={completed} />
               </>
             ) : (
-              "Start with your minimum"
+              "T1 is your minimum"
             )}
           </p>
         </div>
-        {completed > 0 && <Tier level={completed} />}
-      </div>
-      {completed > 0 && completed < 3 && (
-        <button
-          type="button"
-          className="optional-extra-toggle"
-          aria-label={`${extraOpen ? "Hide optional extra" : "Optional extra"} for ${snapshot.name}`}
-          aria-expanded={extraOpen}
-          aria-controls={extraId}
-          onClick={() => setExpandedLevel(extraOpen ? null : completed)}
-        >
-          {extraOpen ? "Hide optional extra" : "Optional extra"}
-          <ChevronDown size={16} />
-        </button>
-      )}
-      {completed < 3 ? (
-        <div
-          id={extraId}
-          className="today-task-next"
-          hidden={completed > 0 && !extraOpen}
-        >
-          <div className="inline-next-copy">
-            <h4>
-              Next: T{nextLevel} badge
+        <div className="habit-card-action">
+          {completed < 3 ? (
+            <>
+              <button
+                type="button"
+                className={cx("button", completed > 0 && "secondary")}
+                aria-label={`Complete T${completed + 1} for ${snapshot.name}`}
+                aria-haspopup="dialog"
+                onClick={open}
+              >
+                Complete T{completed + 1}
+              </button>
               {completed > 0 && (
-                <span className="optional-label">Optional</span>
+                <span className="habit-card-optional">Optional</span>
               )}
-            </h4>
-            {completed === 0 && (
-              <p className="minimum-completion-hint" id={hintId}>
-                Do these first, then mark your minimum done.
-              </p>
-            )}
-            <ul className="inline-next-requirements">
-              {remaining.map((r) => (
-                <li key={r.id}>
-                  <RequirementText r={r} additional={nextLevel > 1} />
-                </li>
-              ))}
-            </ul>
-          </div>
-          <button
-            type="button"
-            className={cx(
-              "button",
-              "inline-win-button",
-              completed > 0 && "secondary",
-            )}
-            disabled={busy || settling}
-            onClick={win}
-            aria-label={
-              completed === 0
-                ? `Mark minimum done for ${snapshot.name}`
-                : `Achieve T${nextLevel} badge for ${snapshot.name}`
-            }
-            aria-describedby={completed === 0 ? hintId : undefined}
-          >
-            {busy
-              ? "Saving…"
-              : completed === 0
-                ? "Mark minimum done"
-                : `Achieve T${nextLevel} badge`}
-            {!busy && <ArrowRight size={17} />}
-          </button>
+            </>
+          ) : (
+            <span className="inline-full-win">
+              <Check size={17} /> All done
+            </span>
+          )}
         </div>
-      ) : (
-        <div className="inline-full-win">
-          <Trophy size={18} />
-          <span>T3 badge achieved. Nothing more to do today.</span>
-        </div>
-      )}
-      {error && (
-        <p className="inline-card-error" role="alert">
-          {error}
-        </p>
-      )}
+      </div>
       <p
         className="inline-win-message visually-hidden"
         role="status"
@@ -173,6 +99,13 @@ export function TodayTaskCard({ task, progress, day, suggested = false }) {
       >
         {message}
       </p>
+      {selection && (
+        <HabitCompletionDialog
+          {...selection}
+          onClose={() => setSelection(null)}
+          onComplete={finish}
+        />
+      )}
     </article>
   );
 }
