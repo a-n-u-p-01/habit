@@ -174,15 +174,20 @@ await expect
   .poll(() => page.locator(".today-task-card h3").allTextContents())
   .toEqual(expected);
 await expect(page.locator(".inline-level-status").first()).toContainText(
-  "T1 badge achieved",
+  "Minimum done",
 );
 await expect(
   page.getByRole("button", { name: "Achieve T2 badge for Gamma", exact: true }),
+).toHaveCount(0);
+await expect(
+  page.getByRole("button", { name: "Optional extra for Gamma", exact: true }),
 ).toBeVisible();
-await page.getByRole("button", { name: "Timeline", exact: true }).click();
-await expect
-  .poll(() => page.locator(".task-list h3").allTextContents())
-  .toEqual(["Gamma", "Delta", "Alpha"]);
+await expect(
+  page.getByRole("button", { name: "Timeline", exact: true }),
+).toHaveCount(0);
+await expect(
+  page.getByRole("button", { name: "Habits", exact: true }),
+).toHaveCount(0);
 await page.goto("http://127.0.0.1:4173/week");
 await expect
   .poll(() => page.locator(".week-table tbody th").allTextContents())
@@ -232,7 +237,7 @@ writeFileSync(
         "refresh-persistence",
         "enable-keeps-position",
         "Today-order",
-        "Timeline-order",
+        "Today-has-no-view-switch",
         "Week-order",
         "Analytics-order",
         "edit-keeps-position",

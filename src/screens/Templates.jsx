@@ -263,7 +263,13 @@ export function Templates() {
                       : "PERSONAL TEMPLATE"
                     : "COMMUNITY BLUEPRINT"}
               </span>
-              <Link to={`/templates/${t.id}`}>
+              <Link
+                to={
+                  tab === "mine"
+                    ? `/templates/${t.id}/edit`
+                    : `/templates/${t.id}`
+                }
+              >
                 <h2>{t.name}</h2>
               </Link>
               <p>
@@ -288,6 +294,13 @@ export function Templates() {
               <div className="template-actions">
                 {tab === "mine" ? (
                   <>
+                    <Link
+                      className="button compact"
+                      to="/tasks/new"
+                      state={{ template: t, privateTemplate: true }}
+                    >
+                      Use <ArrowRight size={15} />
+                    </Link>
                     <Link
                       className="button secondary compact"
                       to={`/templates/${t.id}/edit`}

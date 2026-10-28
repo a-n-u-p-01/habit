@@ -253,14 +253,3 @@ export function moveHabit(ids, from, to) {
   next.splice(to, 0, id);
   return next;
 }
-export function sortByHabitOrder(rows, habits, getId = (row) => row.taskId) {
-  const ranks = new Map(habits.map((h, index) => [h.id, index]));
-  return rows
-    .map((row, index) => ({ row, index }))
-    .sort((a, b) => {
-      const ar = ranks.get(getId(a.row)) ?? Infinity,
-        br = ranks.get(getId(b.row)) ?? Infinity;
-      return ar === br ? a.index - b.index : ar - br;
-    })
-    .map((item) => item.row);
-}

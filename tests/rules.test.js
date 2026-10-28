@@ -5,7 +5,19 @@ import {
   assertSucceeds,
   assertFails,
 } from "@firebase/rules-unit-testing";
-import { doc, setDoc, getDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  getDoc,
+  deleteDoc,
+  writeBatch,
+  serverTimestamp,
+  collection,
+  getDocs,
+  query,
+  where,
+  updateDoc,
+} from "firebase/firestore";
 import { exemplar } from "../src/domain.js";
 import { encodeFirestore } from "../src/serialization.js";
 let env;
@@ -264,4 +276,369 @@ test("Habit reorder batch preserves fields and is owner-only without new rules",
   const forged = writeBatch(b);
   forged.update(doc(b, "users/alice/tasks/a"), { orderIndex: 0 });
   await assertFails(forged.commit());
+});
+
+// Roles and feedback: enforce authorization in Firestore, not only in navigation.
+async function seedAccess() {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    for (const uid of ["alice", "bob", "admin", "super", "otherSuper"])
+      await setDoc(doc(db, "users", uid), { displayName: uid, photoURL: "" });
+    for (const [uid, role] of [
+      ["admin", "admin"],
+      ["super", "super_admin"],
+      ["otherSuper", "super_admin"],
+    ])
+      await setDoc(doc(db, "userRoles", uid), { role });
+  });
+}
+const roleWrite = (role, uid) => ({
+  role,
+  updatedBy: uid,
+  updatedAt: serverTimestamp(),
+});
+const feedbackWrite = (uid, extra = {}) => ({
+  type: "report",
+  title: "A small problem",
+  message: "Steps to reproduce the problem.",
+  authorId: uid,
+  authorName: uid,
+  status: "open",
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+  ...extra,
+});
+
+test("Only staff can list users; staff cannot read private habits or change profiles", async () => {
+  await seedAccess();
+  const alice = env.authenticatedContext("alice").firestore();
+  await setDoc(doc(alice, "users/alice/tasks/a"), task);
+  for (const uid of ["admin", "super"]) {
+    const db = env.authenticatedContext(uid).firestore();
+    await assertSucceeds(getDocs(collection(db, "users")));
+    await assertSucceeds(getDocs(collection(db, "userRoles")));
+    await assertFails(getDoc(doc(db, "users/alice/tasks/a")));
+    await assertFails(
+      updateDoc(doc(db, "users/alice"), { displayName: "hijacked" }),
+    );
+    await assertFails(deleteDoc(doc(db, "users/alice")));
+  }
+  await assertFails(getDocs(collection(alice, "users")));
+  await assertFails(getDocs(collection(alice, "userRoles")));
+  await assertSucceeds(getDoc(doc(alice, "userRoles/alice")));
+  await assertFails(getDoc(doc(alice, "userRoles/admin")));
+  await assertFails(
+    getDocs(collection(env.unauthenticatedContext().firestore(), "users")),
+  );
+});
+
+test("Only super admins grant, change and remove roles; own role changes are denied", async () => {
+  await seedAccess();
+  const superDb = env.authenticatedContext("super").firestore();
+  for (const uid of ["alice", "admin"]) {
+    const db = env.authenticatedContext(uid).firestore();
+    await assertFails(
+      setDoc(doc(db, "userRoles/bob"), roleWrite("admin", uid)),
+    );
+    await assertFails(
+      setDoc(doc(db, "userRoles", uid), roleWrite("super_admin", uid)),
+    );
+    await assertFails(deleteDoc(doc(db, "userRoles/admin")));
+    await assertFails(
+      setDoc(doc(db, "users", uid), {
+        displayName: uid,
+        photoURL: "",
+        role: "super_admin",
+      }),
+    );
+  }
+  await assertSucceeds(
+    setDoc(doc(superDb, "userRoles/alice"), roleWrite("admin", "super")),
+  );
+  await assertSucceeds(
+    setDoc(doc(superDb, "userRoles/alice"), roleWrite("super_admin", "super")),
+  );
+  await assertSucceeds(deleteDoc(doc(superDb, "userRoles/alice")));
+  await assertSucceeds(deleteDoc(doc(superDb, "userRoles/otherSuper")));
+  await assertFails(
+    setDoc(doc(superDb, "userRoles/super"), roleWrite("admin", "super")),
+  );
+  await assertFails(deleteDoc(doc(superDb, "userRoles/super")));
+  await assertFails(
+    setDoc(doc(superDb, "userRoles/bob"), roleWrite("owner", "super")),
+  );
+  await assertFails(
+    setDoc(doc(superDb, "userRoles/bob"), roleWrite("admin", "alice")),
+  );
+  await assertFails(
+    setDoc(doc(superDb, "userRoles/nonexistent"), roleWrite("admin", "super")),
+  );
+  await assertFails(
+    setDoc(doc(superDb, "userRoles/bob"), {
+      ...roleWrite("admin", "super"),
+      extra: true,
+    }),
+  );
+  await assertFails(
+    setDoc(doc(superDb, "userRoles/bob"), {
+      ...roleWrite("admin", "super"),
+      updatedAt: 1,
+    }),
+  );
+});
+
+test("Profile email is owner-only and cannot be forged; legacy profiles still work", async () => {
+  const db = env
+    .authenticatedContext("alice", { email: "alice@example.test" })
+    .firestore();
+  await assertSucceeds(
+    setDoc(doc(db, "users/alice"), { displayName: "Alice", photoURL: "" }),
+  );
+  await assertSucceeds(
+    setDoc(doc(db, "users/alice"), {
+      displayName: "Alice",
+      photoURL: "",
+      email: "alice@example.test",
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "users/alice"), { email: "admin@example.test" }),
+  );
+});
+
+test("Users submit both feedback types; forged ownership, statuses and malformed content are denied", async () => {
+  await seedAccess();
+  const db = env.authenticatedContext("alice").firestore();
+  await assertSucceeds(
+    setDoc(doc(db, "feedback/report"), feedbackWrite("alice")),
+  );
+  await assertSucceeds(
+    setDoc(
+      doc(db, "feedback/suggestion"),
+      feedbackWrite("alice", { type: "suggestion" }),
+    ),
+  );
+  for (const extra of [
+    { authorId: "bob" },
+    { type: "other" },
+    { status: "resolved" },
+    { title: "" },
+    { title: "a".repeat(121) },
+    { message: "" },
+    { message: "a".repeat(5001) },
+    { createdAt: 0 },
+    { updatedAt: 0 },
+    { unexpected: true },
+  ])
+    await assertFails(
+      setDoc(doc(db, "feedback/invalid"), feedbackWrite("alice", extra)),
+    );
+  await assertFails(
+    setDoc(
+      doc(env.unauthenticatedContext().firestore(), "feedback/anonymous"),
+      feedbackWrite("alice"),
+    ),
+  );
+});
+
+test("Feedback is private to sender and staff, including list queries", async () => {
+  await seedAccess();
+  const db = env.authenticatedContext("alice").firestore();
+  await setDoc(doc(db, "feedback/alice-report"), feedbackWrite("alice"));
+  await assertSucceeds(getDoc(doc(db, "feedback/alice-report")));
+  await assertSucceeds(
+    getDocs(
+      query(collection(db, "feedback"), where("authorId", "==", "alice")),
+    ),
+  );
+  await assertFails(getDocs(collection(db, "feedback")));
+  await assertFails(
+    getDoc(
+      doc(env.authenticatedContext("bob").firestore(), "feedback/alice-report"),
+    ),
+  );
+  await assertFails(
+    getDoc(
+      doc(env.unauthenticatedContext().firestore(), "feedback/alice-report"),
+    ),
+  );
+  for (const uid of ["admin", "super"]) {
+    const staff = env.authenticatedContext(uid).firestore();
+    await assertSucceeds(getDocs(collection(staff, "feedback")));
+    await assertSucceeds(getDoc(doc(staff, "feedback/alice-report")));
+  }
+});
+
+test("Staff can change status only; users cannot resolve or rewrite submissions", async () => {
+  await seedAccess();
+  const db = env.authenticatedContext("alice").firestore();
+  await setDoc(doc(db, "feedback/report"), feedbackWrite("alice"));
+  const statusWrite = (uid, status) => ({
+    status,
+    updatedBy: uid,
+    updatedAt: serverTimestamp(),
+  });
+  await assertFails(
+    updateDoc(doc(db, "feedback/report"), statusWrite("alice", "resolved")),
+  );
+  await assertFails(
+    updateDoc(doc(db, "feedback/report"), { message: "rewritten" }),
+  );
+  for (const uid of ["admin", "super"]) {
+    const staff = env.authenticatedContext(uid).firestore();
+    await assertSucceeds(
+      updateDoc(doc(staff, "feedback/report"), statusWrite(uid, "in_progress")),
+    );
+    await assertSucceeds(
+      updateDoc(doc(staff, "feedback/report"), statusWrite(uid, "resolved")),
+    );
+    await assertFails(
+      updateDoc(doc(staff, "feedback/report"), {
+        ...statusWrite(uid, "open"),
+        message: "tampered",
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(staff, "feedback/report"), statusWrite(uid, "invalid")),
+    );
+    await assertFails(
+      updateDoc(doc(staff, "feedback/report"), statusWrite("bob", "open")),
+    );
+    await assertFails(deleteDoc(doc(staff, "feedback/report")));
+  }
+  await assertSucceeds(deleteDoc(doc(db, "feedback/report")));
+});
+
+test("Revoking a staff role removes server access immediately", async () => {
+  await seedAccess();
+  const staff = env.authenticatedContext("admin").firestore();
+  await assertSucceeds(getDocs(collection(staff, "users")));
+  const superDb = env.authenticatedContext("super").firestore();
+  await deleteDoc(doc(superDb, "userRoles/admin"));
+  await assertFails(getDocs(collection(staff, "users")));
+  await assertFails(getDocs(collection(staff, "feedback")));
+});
+
+test("Owner can atomically save a manual habit and private template", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  const template = {
+    id: "a",
+    name: task.name,
+    category: task.category,
+    weekdays: task.weekdays,
+    levels: task.levels,
+    description: "",
+    published: false,
+  };
+  const batch = writeBatch(db);
+  batch.set(doc(db, "users/alice/tasks/a"), task);
+  batch.set(doc(db, "users/alice/templates/a"), template);
+  await assertSucceeds(batch.commit());
+  const other = env.authenticatedContext("bob").firestore();
+  await assertFails(getDoc(doc(other, "users/alice/templates/a")));
+});
+
+test("If the generated template is invalid, the paired habit is not saved", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  const batch = writeBatch(db);
+  batch.set(doc(db, "users/alice/tasks/a"), task);
+  batch.set(doc(db, "users/alice/templates/a"), {
+    ...task,
+    published: false,
+    category: "Invalid",
+  });
+  await assertFails(batch.commit());
+  const habit = await getDoc(doc(db, "users/alice/tasks/a"));
+  const template = await getDoc(doc(db, "users/alice/templates/a"));
+  if (habit.exists() || template.exists())
+    throw new Error("Atomic creation left a partial document");
+});
+
+test("Late completion writes tier wins atomically without changing an existing snapshot", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  await setDoc(doc(db, "users/alice/tasks/a"), task);
+  const id = "2026-10-27_a";
+  const p = {
+    id,
+    taskId: "a",
+    date: "2026-10-27",
+    scheduled: true,
+    snapshot: encodeFirestore(exemplar),
+    checks: {},
+  };
+  await setDoc(doc(db, "users/alice/progress", id), p);
+  const checks = Object.fromEntries(
+    exemplar.levels.flat().map((r) => [r.id, true]),
+  );
+  const late = {
+    lateLoggedAt: Date.now(),
+    lateRequirementsSource: "saved_session",
+  };
+  const batch = writeBatch(db);
+  batch.update(doc(db, "users/alice/progress", id), { checks, ...late });
+  for (const level of [1, 2, 3]) {
+    const winId = `${id}_T${level}`;
+    batch.set(doc(db, "users/alice/wins", winId), {
+      id: winId,
+      taskId: "a",
+      date: p.date,
+      level,
+      ...late,
+    });
+  }
+  await assertSucceeds(batch.commit());
+  await assertFails(
+    updateDoc(doc(db, "users/alice/progress", id), {
+      snapshot: encodeFirestore({ ...exemplar, name: "Rewritten" }),
+      ...late,
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "users/alice/progress", id), { lateLoggedAt: "invalid" }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "users/alice/progress", id), {
+      lateRequirementsSource: "invented",
+    }),
+  );
+  await assertFails(
+    updateDoc(
+      doc(
+        env.authenticatedContext("bob").firestore(),
+        "users/alice/progress",
+        id,
+      ),
+      { checks, ...late },
+    ),
+  );
+});
+
+test("New late sessions accept validated metadata and cannot forge wins without checks", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  await setDoc(doc(db, "users/alice/tasks/a"), task);
+  const id = "2026-10-27_a";
+  const late = {
+    lateLoggedAt: Date.now(),
+    lateRequirementsSource: "saved_history",
+  };
+  await assertSucceeds(
+    setDoc(doc(db, "users/alice/progress", id), {
+      id,
+      taskId: "a",
+      date: "2026-10-27",
+      scheduled: true,
+      snapshot: encodeFirestore(exemplar),
+      checks: {},
+      ...late,
+    }),
+  );
+  await assertFails(
+    setDoc(doc(db, `users/alice/wins/${id}_T3`), {
+      id: `${id}_T3`,
+      taskId: "a",
+      date: "2026-10-27",
+      level: 3,
+      ...late,
+    }),
+  );
 });

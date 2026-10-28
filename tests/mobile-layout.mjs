@@ -64,6 +64,7 @@ const routes = [
   "/week",
   "/analytics",
   "/tasks/new",
+  "/tasks/new/manual",
   "/task/phone-task-1",
   "/templates",
   "/templates/starter-reading",
@@ -84,6 +85,34 @@ for (const theme of ["dark", "light"]) {
     for (const route of routes) {
       await page.goto(`http://127.0.0.1:4173${route}`);
       await page.locator("h1:visible,h2:visible").first().waitFor();
+      if (route === "/") {
+        await expect(page.locator(".today-summary")).toContainText("1/3");
+        await expect(
+          page.locator(".today-hero,.reminder-card,.review-link"),
+        ).toHaveCount(0);
+        await expect(
+          page.locator(".today-task-card").first().locator(".today-task-next"),
+        ).toBeHidden();
+        await expect(
+          page.getByRole("button", {
+            name: "Optional extra for Morning movement",
+            exact: true,
+          }),
+        ).toHaveAttribute("aria-expanded", "false");
+        assert.deepEqual(
+          await page.locator(".today-task-card h3").allTextContents(),
+          tasks.map((t) => t.name),
+        );
+        const controls = await page
+          .locator(".today-shortcuts a,.optional-extra-toggle")
+          .evaluateAll((nodes) =>
+            nodes.map((node) => node.getBoundingClientRect().height),
+          );
+        assert.ok(
+          controls.every((height) => height >= 44),
+          "Today shortcuts and optional-extra controls need 44px touch targets",
+        );
+      }
       const metrics = await page.evaluate(() => {
         const visible = (e) =>
           e.getClientRects().length > 0 &&
@@ -141,10 +170,16 @@ for (const theme of ["dark", "light"]) {
       if (
         width === 390 &&
         theme === "dark" &&
-        ["/", "/tasks/new", "/task/phone-task-1", "/templates"].includes(route)
+        [
+          "/",
+          "/tasks/new",
+          "/tasks/new/manual",
+          "/task/phone-task-1",
+          "/templates",
+        ].includes(route)
       )
         await page.screenshot({
-          path: `screenshots/mobile-${route === "/" ? "today" : route === "/tasks/new" ? "editor" : route === "/templates" ? "templates" : "task"}-improved.png`,
+          path: `screenshots/mobile-${route === "/" ? "today" : route === "/tasks/new" ? "habit-choice" : route === "/tasks/new/manual" ? "editor" : route === "/templates" ? "templates" : "task"}-improved.png`,
           fullPage: true,
         });
     }
@@ -166,7 +201,7 @@ for (const [width, name] of [
 }
 // 200% font scaling should reflow without clipping or disabling browser zoom.
 await page.setViewportSize({ width: 390, height: 844 });
-await page.goto("http://127.0.0.1:4173/tasks/new");
+await page.goto("http://127.0.0.1:4173/tasks/new/manual");
 await page.addStyleTag({
   content: "input,textarea,select{font-size:32px!important}",
 });

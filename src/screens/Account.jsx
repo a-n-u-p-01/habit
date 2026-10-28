@@ -1,3 +1,4 @@
+import { useAccess, ROLE_LABELS } from "../access";
 import { HabitOrderList } from "../HabitOrderList";
 import React, { useState, useEffect, useMemo } from "react";
 import {
@@ -91,6 +92,7 @@ import {
 } from "../components";
 export function Profile() {
   const app = useApp();
+  const access = useAccess();
   const allKeys = [
     ...new Set([
       ...app.progress.map((p) => p.date),
@@ -151,6 +153,7 @@ export function Profile() {
             ? "Your wins, safely in your own space."
             : "Your data is saved on this device. Sign in for cloud sync."}
         </p>
+        {app.user && access.ready && <span className="role-badge">{ROLE_LABELS[access.role]}</span>}
         {!app.user && (
           <button className="button" onClick={() => app.login()}>
             Continue with Google
@@ -214,6 +217,8 @@ export function Profile() {
             [Sparkles, "Weekly Review", "/review"],
             [Settings, "Settings & Privacy", "/settings"],
             [HelpCircle, "Help & Philosophy", "/help"],
+            [HelpCircle, "Report or suggest", "/feedback"],
+            ...(access.isStaff ? [[Shield, "Users & roles", "/admin/users"], [BookOpen, "Reports & suggestions", "/admin/feedback"]] : []),
           ].map(([Icon, label, to]) => (
             <Link key={to} to={to}>
               <Icon size={19} />
@@ -344,9 +349,9 @@ export function SettingsPage() {
             <Shield size={21} /> Your data belongs to you
           </h2>
           <p>
-            Google provides your name and photo. Private habits, progress, and
+            Google provides your name, email and photo. Admins can view your app profile and role. Private habits, progress, and
             reflections stay inside your Firebase user boundary. Published
-            templates, reviews, and adoption identifiers are public.
+            templates, reviews, and adoption identifiers are public. Reports and suggestions are visible only to their sender and the admin team.
           </p>
           <p className="muted">
             On shared devices, sign out and use a private browser window. This
@@ -470,10 +475,10 @@ export function Help() {
         </p>
         <h3>Feedback</h3>
         <p>
-          This is your independently deployed app. To report a problem, export
-          your data if useful and contact the person who deployed it. No
-          feedback is sent to an invented inbox or fake API.
+          Report a problem or suggest an improvement directly to the admin team.
+          Sign in to send feedback and follow its status.
         </p>
+        <Link className="button secondary" to="/feedback">Report or suggest</Link>
         <Link className="button" to="/">
           Back to today
           <ArrowRight size={17} />

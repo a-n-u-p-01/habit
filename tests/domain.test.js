@@ -204,15 +204,8 @@ test("Stale or duplicate reorder IDs are rejected without dropping habits", asyn
   assert.throws(() => applyHabitOrder(rows, ["a"]));
   assert.throws(() => applyHabitOrder(rows, ["a", "x"]));
 });
-test("Timeline rows follow the same habit order and move boundaries are safe", async () => {
-  const { sortByHabitOrder, moveHabit } = await import("../src/domain.js");
-  assert.deepEqual(
-    sortByHabitOrder(
-      [{ taskId: "a" }, { taskId: "c" }, { taskId: "b" }],
-      [{ id: "b" }, { id: "a" }, { id: "c" }],
-    ).map((p) => p.taskId),
-    ["b", "a", "c"],
-  );
+test("Habit move boundaries are safe", async () => {
+  const { moveHabit } = await import("../src/domain.js");
   assert.deepEqual(moveHabit(["a", "b", "c"], 2, 0), ["c", "a", "b"]);
   assert.deepEqual(moveHabit(["a", "b"], 0, -1), ["a", "b"]);
 });

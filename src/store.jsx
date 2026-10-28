@@ -1,3 +1,4 @@
+import { preparePastCompletion } from "./history";
 import React, {
   createContext,
   useContext,
@@ -159,6 +160,7 @@ export function AppProvider({ children }) {
       {
         displayName: user.displayName || "You",
         photoURL: user.photoURL || "",
+        email: user.email || "",
         updatedAt: serverTimestamp(),
       },
       { merge: true },
@@ -276,6 +278,58 @@ export function AppProvider({ children }) {
     }
     try {
       await promise;
+    } catch (e) {
+      fail(e);
+    }
+  }
+  // One guest-state update or one Firestore batch: never save only half the pair.
+  async function createHabitWithTemplate(id, payload) {
+    const tasks = user ? current.tasks : guestRef.current.tasks;
+    const existing = tasks.find((t) => t.id === id);
+    const orderIndex = Number.isFinite(existing?.orderIndex)
+      ? existing.orderIndex
+      : Math.max(
+          -1,
+          ...tasks.map((t) =>
+            Number.isFinite(t.orderIndex) ? t.orderIndex : -1,
+          ),
+        ) + 1;
+    const task = clean({ ...payload, id, orderIndex });
+    const template = clean({
+      id,
+      name: task.name,
+      description: task.description || "",
+      category: task.category,
+      weekdays: task.weekdays,
+      levels: task.levels,
+      published: false,
+    });
+    if (!user) {
+      setGuest((data) => ({
+        ...data,
+        tasks: [...data.tasks.filter((t) => t.id !== id), task],
+        templates: [...data.templates.filter((t) => t.id !== id), template],
+      }));
+      return;
+    }
+    const batch = writeBatch(db);
+    batch.set(doc(db, "users", user.uid, "tasks", id), {
+      ...encodeFirestore(task),
+      updatedAt: serverTimestamp(),
+    });
+    batch.set(doc(db, "users", user.uid, "templates", id), {
+      ...encodeFirestore(template),
+      updatedAt: serverTimestamp(),
+    });
+    const commit = batch.commit();
+    if (!online) {
+      commit.catch((e) =>
+        setError(`Habit and template could not sync: ${e.message}`),
+      );
+      return;
+    }
+    try {
+      await commit;
     } catch (e) {
       fail(e);
     }
@@ -436,6 +490,87 @@ export function AppProvider({ children }) {
       fail(e);
     }
   }
+  async function logPastCompletion(taskId, key, target, confirmation) {
+    if (!user) {
+      const data = guestRef.current;
+      const task = data.tasks.find((row) => row.id === taskId);
+      const stored = data.progress.find(
+        (row) => row.id === progressId(taskId, key),
+      );
+      const result = preparePastCompletion(
+        task,
+        stored,
+        key,
+        target,
+        confirmation,
+      );
+      if (result.changed)
+        setGuest((data) => ({
+          ...data,
+          progress: [
+            ...data.progress.filter((row) => row.id !== result.progress.id),
+            result.progress,
+          ],
+          wins: [
+            ...data.wins.filter(
+              (row) => !result.wins.some((win) => win.id === row.id),
+            ),
+            ...result.wins,
+          ],
+        }));
+      return result.progress;
+    }
+    if (!online)
+      throw new Error("Reconnect to save a correction to your cloud account.");
+    // Read the task and session together so another device cannot overwrite
+    // the requirements or checks after the user has reviewed the date.
+    return runTransaction(db, async (tx) => {
+      const taskRef = doc(db, "users", user.uid, "tasks", taskId);
+      const progressRef = doc(
+        db,
+        "users",
+        user.uid,
+        "progress",
+        progressId(taskId, key),
+      );
+      const [taskDoc, progressDoc] = await Promise.all([
+        tx.get(taskRef),
+        tx.get(progressRef),
+      ]);
+      if (!taskDoc.exists())
+        throw new Error("This habit is no longer available.");
+      const task = { ...decodeFirestore(taskDoc.data()), id: taskId };
+      const stored = progressDoc.exists()
+        ? { ...decodeFirestore(progressDoc.data()), id: progressDoc.id }
+        : null;
+      const result = preparePastCompletion(
+        task,
+        stored,
+        key,
+        target,
+        confirmation,
+      );
+      if (!result.changed) return result.progress;
+      if (stored)
+        tx.update(progressRef, {
+          checks: result.progress.checks,
+          lateLoggedAt: result.progress.lateLoggedAt,
+          lateRequirementsSource: result.progress.lateRequirementsSource,
+          updatedAt: serverTimestamp(),
+        });
+      else
+        tx.set(progressRef, {
+          ...encodeFirestore(result.progress),
+          updatedAt: serverTimestamp(),
+        });
+      for (const win of result.wins)
+        tx.set(doc(db, "users", user.uid, "wins", win.id), {
+          ...win,
+          wonAt: serverTimestamp(),
+        });
+      return result.progress;
+    });
+  }
   async function publish(template) {
     if (!user) throw Error("Sign in to publish a template.");
     if (!online) throw Error("Reconnect to publish.");
@@ -530,6 +665,14 @@ export function AppProvider({ children }) {
         await b.commit();
       }
     }
+    const feedback = await getDocs(
+      query(collection(db, "feedback"), where("authorId", "==", uid)),
+    );
+    for (let i = 0; i < feedback.docs.length; i += 200) {
+      const batch = writeBatch(db);
+      feedback.docs.slice(i, i + 200).forEach((row) => batch.delete(row.ref));
+      await batch.commit();
+    }
     await deleteDoc(doc(db, "users", uid));
     await deleteUser(user);
     setNotice("Account and app data deleted.");
@@ -550,11 +693,13 @@ export function AppProvider({ children }) {
         theme,
         setTheme: setThemeState,
         persist,
+        createHabitWithTemplate,
         login,
         logout: () => signOut(auth),
         begin,
         check,
         winLevel,
+        logPastCompletion,
         reorderHabits,
         reordering,
         publish,

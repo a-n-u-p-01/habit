@@ -12,8 +12,10 @@ import {
 import { Profile, SettingsPage, Help } from "./screens/Account";
 import { Templates, TemplateDetail } from "./screens/Templates";
 import { Week, Analytics, WeeklyReview } from "./screens/Insights";
-import { TaskEditor, TaskFlow } from "./screens/Tasks";
+import { NewHabit, TaskEditor, TaskFlow } from "./screens/Tasks";
 import { Today } from "./screens/Today";
+import { AccessProvider, StaffOnly, useAccess } from "./access";
+import { UsersPage, FeedbackPage } from "./screens/Administration";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   BrowserRouter,
@@ -283,6 +285,7 @@ const authenticated = () => !!auth.currentUser;
 function Shell() {
   const app = useApp(),
     location = useLocation();
+  const access = useAccess();
   const [menu, setMenu] = useState(false);
   useEffect(() => {
     setMenu(false);
@@ -331,6 +334,13 @@ function Shell() {
             [BarChart3, "My progress", "/analytics"],
             [Layers, "Templates", "/templates"],
             [User, "My space", "/profile"],
+            [HelpCircle, "Report or suggest", "/feedback"],
+            ...(access.isStaff
+              ? [
+                  [Shield, "Users & roles", "/admin/users"],
+                  [BookOpen, "Feedback inbox", "/admin/feedback"],
+                ]
+              : []),
           ].map(([Icon, title, path]) => (
             <NavLink key={path} to={path} end={path === "/" ? true : false}>
               <Icon size={20} />
@@ -426,7 +436,8 @@ function Shell() {
           ) : (
             <Routes>
               <Route path="/" element={<Today />} />
-              <Route path="/tasks/new" element={<TaskEditor />} />
+              <Route path="/tasks/new" element={<NewHabit />} />
+              <Route path="/tasks/new/manual" element={<TaskEditor />} />
               <Route path="/tasks/:id/edit" element={<TaskEditor />} />
               <Route path="/task/:id" element={<TaskFlow />} />
               <Route path="/week" element={<Week />} />
@@ -445,6 +456,23 @@ function Shell() {
               <Route path="/review" element={<WeeklyReview />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/help" element={<Help />} />
+              <Route path="/feedback" element={<FeedbackPage />} />
+              <Route
+                path="/admin/users"
+                element={
+                  <StaffOnly>
+                    <UsersPage />
+                  </StaffOnly>
+                }
+              />
+              <Route
+                path="/admin/feedback"
+                element={
+                  <StaffOnly>
+                    <FeedbackPage inbox />
+                  </StaffOnly>
+                }
+              />
               <Route
                 path="*"
                 element={
@@ -524,7 +552,9 @@ export default function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <AppProvider>
-          <WelcomeRedirect />
+          <AccessProvider>
+            <WelcomeRedirect />
+          </AccessProvider>
         </AppProvider>
       </BrowserRouter>
     </ErrorBoundary>
