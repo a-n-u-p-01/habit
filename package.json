@@ -9,6 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test tests/domain.test.js",
     "test:rules": "firebase emulators:exec --only firestore --project demo-win-today 'node --test tests/rules.test.js'",
+    "test:access": "firebase emulators:exec --only auth,firestore --project demo-win-today --config firebase.access-test.json 'node tests/access-browser.mjs'",
     "test:browser": "node tests/browser-smoke.mjs",
     "format": "prettier --write src tests vite.config.js index.html firebase.json firestore.indexes.json package.json",
     "test:mobile": "node tests/mobile-layout.mjs",

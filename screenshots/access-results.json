@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "checks": [
+    "Guest sign-in gate",
+    "Normal user report and suggestion submission",
+    "Direct admin-route guard",
+    "Admin reads feedback and updates status",
+    "Users can track their own feedback status",
+    "Admins see users but cannot change roles",
+    "Super admin grants and removes roles",
+    "Live promotion and demotion",
+    "Self-role changes disabled",
+    "User search",
+    "Mobile layout",
+    "Profile feedback link",
+    "No browser exceptions"
+  ]
+}

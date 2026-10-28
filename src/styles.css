@@ -3568,3 +3568,23 @@ input[type="checkbox"] {
     white-space: normal;
   }
 }
+
+/* User administration and private feedback, using the existing app theme. */
+.admin-user { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 0; border-bottom: 1px solid var(--line); }
+.admin-user:last-child { border-bottom: 0; }
+.admin-user-copy { min-width: 0; overflow-wrap: anywhere; }
+.admin-user-copy h3, .admin-user-copy p { margin: 0 0 6px; }
+.admin-role { min-width: 170px; }
+.role-badge { display: inline-block; border: 1px solid var(--line); border-radius: 20px; padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+.feedback-list { display: grid; gap: 18px; }
+.feedback-form { margin-bottom: 32px; }
+.feedback-card { padding: 24px; overflow-wrap: anywhere; }
+.feedback-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.feedback-message { white-space: pre-wrap; }
+.feedback-status { display: block; max-width: 220px; margin-top: 20px; }
+@media (max-width: 760px) {
+  .admin-user { align-items: stretch; flex-direction: column; gap: 14px; }
+  .admin-role { width: 100%; }
+  .feedback-heading { align-items: flex-start; flex-wrap: wrap; }
+  .feedback-card { padding: 20px 16px; }
+}

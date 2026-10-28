@@ -159,6 +159,7 @@ export function AppProvider({ children }) {
       {
         displayName: user.displayName || "You",
         photoURL: user.photoURL || "",
+        email: user.email || "",
         updatedAt: serverTimestamp(),
       },
       { merge: true },
@@ -529,6 +530,12 @@ export function AppProvider({ children }) {
         rows.docs.slice(i, i + 200).forEach((d) => b.delete(d.ref));
         await b.commit();
       }
+    }
+    const feedback = await getDocs(query(collection(db, "feedback"), where("authorId", "==", uid)));
+    for (let i = 0; i < feedback.docs.length; i += 200) {
+      const batch = writeBatch(db);
+      feedback.docs.slice(i, i + 200).forEach(row => batch.delete(row.ref));
+      await batch.commit();
     }
     await deleteDoc(doc(db, "users", uid));
     await deleteUser(user);

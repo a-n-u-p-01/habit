@@ -3,6 +3,9 @@ service cloud.firestore {
  match /databases/{database}/documents {
   function signedIn() { return request.auth != null; }
   function own(uid) { return signedIn() && request.auth.uid == uid; }
+  function role() { return signedIn() && exists(/databases/$(database)/documents/userRoles/$(request.auth.uid)) ? get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.role : 'user'; }
+  function staff() { return role() in ['admin','super_admin']; }
+  function superAdmin() { return role() == 'super_admin'; }
   function shortText(s,n) { return s is string && s.size() > 0 && s.size() <= n; }
   function requirement(r) { return r is map && r.id is string && r.label is string && r.unit is string && r.amount is number && r.amount > 0 && r.amount <= 100000; }
   function at(rows,i) { return rows.size() <= i || requirement(rows[i]); }
@@ -18,8 +21,9 @@ service cloud.firestore {
    return d.level in [1,2,3] && won(p.snapshot.levels.t1,p.checks) && (d.level < 2 || won(p.snapshot.levels.t2,p.checks)) && (d.level < 3 || won(p.snapshot.levels.t3,p.checks));
   }
   match /users/{uid} {
-   allow read,delete: if own(uid);
-   allow create,update: if own(uid) && request.resource.data.keys().hasOnly(['displayName','photoURL','updatedAt']) && request.resource.data.displayName is string && request.resource.data.displayName.size() <= 200 && request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 2000;
+   allow read: if own(uid) || staff();
+   allow delete: if own(uid);
+   allow create,update: if own(uid) && request.resource.data.keys().hasOnly(['displayName','photoURL','email','updatedAt']) && request.resource.data.displayName is string && request.resource.data.displayName.size() <= 200 && request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 2000 && (!request.resource.data.keys().hasAny(['email']) || (request.resource.data.email is string && request.resource.data.email == request.auth.token.get('email','')));
    match /tasks/{id} {
     allow read,delete: if own(uid);
     allow create,update: if own(uid) && request.resource.data.id == id && blueprint(request.resource.data) && date(request.resource.data.createdDay) && request.resource.data.active is bool && request.resource.data.scheduleHistory is list && request.resource.data.scheduleHistory.size() <= 10000;
@@ -45,6 +49,21 @@ service cloud.firestore {
     allow read,delete: if own(uid);
     allow create,update: if own(uid) && request.resource.data.id == id && ((id == 'reminder-preference' && request.resource.data.kind == 'reminderPreference' && request.resource.data.enabled is bool && request.resource.data.time is string && request.resource.data.time.matches('^[0-9]{2}:[0-9]{2}$')) || (date(id) && request.resource.data.weekStart == id && request.resource.data.worked is string && request.resource.data.worked.size() <= 2000 && request.resource.data.hard is string && request.resource.data.hard.size() <= 2000 && request.resource.data.next is string && request.resource.data.next.size() <= 2000));
    }
+  }
+  // Privileges are separate from owner-writable profile documents.
+  match /userRoles/{uid} {
+   allow get: if own(uid) || staff();
+   allow list: if staff();
+   allow create,update: if superAdmin() && request.auth.uid != uid && exists(/databases/$(database)/documents/users/$(uid)) && request.resource.data.keys().hasOnly(['role','updatedBy','updatedAt']) && request.resource.data.role in ['admin','super_admin'] && request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time;
+   // Removing the role document returns the account to normal User access.
+   allow delete: if superAdmin() && request.auth.uid != uid;
+  }
+  match /feedback/{id} {
+   allow read: if signedIn() && (resource.data.authorId == request.auth.uid || staff());
+   allow create: if signedIn() && request.resource.data.keys().hasOnly(['type','title','message','authorId','authorName','status','createdAt','updatedAt']) && request.resource.data.authorId == request.auth.uid && shortText(request.resource.data.authorName,200) && request.resource.data.type in ['report','suggestion'] && shortText(request.resource.data.title,120) && shortText(request.resource.data.message,5000) && request.resource.data.status == 'open' && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+   allow update: if staff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','updatedBy']) && request.resource.data.status in ['open','in_progress','resolved'] && request.resource.data.updatedAt == request.time && request.resource.data.updatedBy == request.auth.uid;
+   // Owners can remove their submissions during account deletion.
+   allow delete: if signedIn() && resource.data.authorId == request.auth.uid;
   }
   match /templates/{id} {
    allow read: if true;
