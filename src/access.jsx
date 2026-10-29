@@ -1,14 +1,12 @@
+import { AppLoading } from "./LoadingStates";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import { useApp } from "./store";
 
 const AccessContext = createContext(null);
-export const ROLE_LABELS = {
-  user: "User",
-  admin: "Admin",
-  super_admin: "Super admin",
-};
+export { ROLE_LABELS } from "./access-labels.js";
+import { ROLE_LABELS } from "./access-labels.js";
 
 export function AccessProvider({ children }) {
   const { user, authReady } = useApp();
@@ -68,7 +66,7 @@ export const useAccess = () => useContext(AccessContext);
 export function StaffOnly({ children }) {
   const { user, login } = useApp();
   const access = useAccess();
-  if (!access.ready) return <p role="status">Checking permissions…</p>;
+  if (!access.ready) return <AppLoading />;
   if (!user)
     return (
       <section className="panel form-section">

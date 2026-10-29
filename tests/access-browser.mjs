@@ -129,7 +129,7 @@ try {
       await setDoc(doc(db, "users", account.uid), {
         displayName: account.name,
         photoURL: "",
-        email: account.email,
+        nameConfirmed: true,
       });
     await setDoc(doc(db, "userRoles", admin.uid), { role: "admin" });
     await setDoc(doc(db, "userRoles", superAdmin.uid), { role: "super_admin" });
@@ -157,12 +157,18 @@ try {
   await normal.page
     .getByRole("button", { name: "Send feedback", exact: true })
     .click();
+  await normal.page
+    .getByRole("link", { name: "Your submissions", exact: true })
+    .click();
   await expect(
     normal.page.getByRole("heading", {
       name: "Habit save problem",
       exact: true,
     }),
   ).toBeVisible();
+  await normal.page
+    .getByRole("link", { name: "Report or suggest", exact: true })
+    .click();
   await normal.page
     .getByLabel("Feedback type", { exact: true })
     .selectOption("suggestion");
@@ -175,6 +181,9 @@ try {
   await normal.page
     .getByRole("button", { name: "Send feedback", exact: true })
     .click();
+  await normal.page
+    .getByRole("link", { name: "Your submissions", exact: true })
+    .click();
   await expect(
     normal.page.getByRole("heading", {
       name: "Improve reminder options",
@@ -182,13 +191,13 @@ try {
     }),
   ).toBeVisible();
   await expect(
-    normal.page.getByRole("link", { name: "Users & roles", exact: true }),
+    normal.page.getByRole("link", { name: "Users", exact: true }),
   ).toHaveCount(0);
   await normal.page.goto(`${baseURL}/admin/users`);
   await expect(
     normal.page.getByRole("heading", { name: "Access restricted" }),
   ).toBeVisible();
-  await normal.page.goto(`${baseURL}/feedback`);
+  await normal.page.goto(`${baseURL}/help?section=submissions`);
 
   const staff = await openPage(admin, "/admin/feedback");
   await expect(
@@ -215,7 +224,17 @@ try {
   await expect(
     staff.page.getByRole("heading", { name: "Member", exact: true }),
   ).toBeVisible();
-  await expect(staff.page.locator(".admin-role select")).toHaveCount(0);
+  await expect(staff.page.locator(".users-role-action select")).toHaveCount(0);
+  // Accounts that never chose an app name must still be visible to staff.
+  await env.withSecurityRulesDisabled(async (ctx) =>
+    setDoc(doc(ctx.firestore(), "users", "legacy-user"), {
+      displayName: "Legacy Person",
+      photoURL: "",
+    }),
+  );
+  await expect(
+    staff.page.getByRole("heading", { name: /Legacy Person/ }),
+  ).toBeVisible();
 
   const owner = await openPage(superAdmin, "/admin/users");
   await expect(
@@ -225,36 +244,45 @@ try {
   await owner.page
     .getByRole("combobox", { name: "Role for Member", exact: true })
     .selectOption("admin");
+  await owner.page
+    .getByRole("button", { name: "Change role for Member", exact: true })
+    .click();
   await expect(
     owner.page.getByRole("combobox", { name: "Role for Member", exact: true }),
   ).toHaveValue("admin");
   await expect(
-    normal.page.getByRole("link", { name: "Users & roles", exact: true }),
+    normal.page.getByRole("link", { name: "Users", exact: true }),
   ).toBeVisible();
   await normal.page.goto(`${baseURL}/admin/users`);
   await expect(
-    normal.page.getByRole("heading", { name: "Users & roles.", exact: true }),
+    normal.page.getByRole("heading", { name: "Users", exact: true }),
   ).toBeVisible();
   await owner.page
     .getByRole("combobox", { name: "Role for Member", exact: true })
     .selectOption("user");
+  await owner.page
+    .getByRole("button", { name: "Change role for Member", exact: true })
+    .click();
   await expect(
     normal.page.getByRole("heading", { name: "Access restricted" }),
   ).toBeVisible();
   await expect(
-    normal.page.getByRole("link", { name: "Users & roles", exact: true }),
+    normal.page.getByRole("link", { name: "Users", exact: true }),
   ).toHaveCount(0);
   await owner.page
     .getByRole("combobox", { name: "Role for Admin", exact: true })
     .selectOption("super_admin");
+  await owner.page
+    .getByRole("button", { name: "Change role for Admin", exact: true })
+    .click();
   await expect(
     owner.page.getByRole("combobox", { name: "Role for Admin", exact: true }),
   ).toHaveValue("super_admin");
   await owner.page
-    .getByPlaceholder("Name, email or user ID")
-    .fill("member@example.test");
-  await expect(owner.page.locator(".admin-user")).toHaveCount(1);
-  await owner.page.getByPlaceholder("Name, email or user ID").fill("");
+    .getByRole("searchbox", { name: "Search users" })
+    .fill("Member");
+  await expect(owner.page.locator(".users-table tbody tr")).toHaveCount(1);
+  await owner.page.getByRole("searchbox", { name: "Search users" }).fill("");
   mkdirSync("screenshots", { recursive: true });
   await expect(owner.page.getByText("Saving…", { exact: true })).toHaveCount(0);
   await owner.page.screenshot({
@@ -262,11 +290,11 @@ try {
     fullPage: true,
   });
 
-  await normal.page.goto(`${baseURL}/feedback`);
+  await normal.page.goto(`${baseURL}/help?section=submissions`);
   await normal.page.setViewportSize({ width: 390, height: 844 });
   await expect(
     normal.page.getByRole("heading", {
-      name: "Report or suggest.",
+      name: "Help & feedback",
       exact: true,
     }),
   ).toBeVisible();
@@ -287,20 +315,20 @@ try {
   await normal.page.goto(`${baseURL}/profile`);
   await expect(
     normal.page
-      .locator(".profile-menu")
-      .getByRole("link", { name: "Report or suggest" }),
+      .locator(".minimal-settings")
+      .getByRole("link", { name: "Help & feedback" }),
   ).toBeVisible();
   // The same flow must save both documents for an authenticated cloud user.
-  await normal.page.goto(`${baseURL}/tasks/new`);
+  await normal.page.goto(`${baseURL}/habits/new`);
   await normal.page
     .getByRole("link", { name: "Create manually", exact: true })
     .click();
   await normal.page
-    .getByPlaceholder("e.g. Move a little")
+    .getByPlaceholder("e.g. Read daily")
     .fill("Cloud reading habit");
   for (const n of [1, 2, 3]) {
     await normal.page
-      .getByRole("textbox", { name: `T${n} activity 1`, exact: true })
+      .getByRole("textbox", { name: `T${n} task 1`, exact: true })
       .fill("Reading");
   }
   while (
@@ -313,7 +341,9 @@ try {
       .first()
       .click();
   await normal.page
-    .getByRole("checkbox", { name: "T2 and T3 are additional amounts" })
+    .getByRole("checkbox", {
+      name: "T1 is manageable. T2 and T3 add extra tasks.",
+    })
     .check();
   await normal.page
     .getByRole("button", { name: "Save habit", exact: true })
@@ -361,10 +391,12 @@ try {
     normal.page.getByRole("heading", { name: "Customize habit", exact: true }),
   ).toBeVisible();
   await normal.page
-    .getByPlaceholder("e.g. Move a little")
+    .getByPlaceholder("e.g. Read daily")
     .fill("Cloud reading copy");
   await normal.page
-    .getByRole("checkbox", { name: "T2 and T3 are additional amounts" })
+    .getByRole("checkbox", {
+      name: "T1 is manageable. T2 and T3 add extra tasks.",
+    })
     .check();
   await normal.page
     .getByRole("button", { name: "Save habit", exact: true })
@@ -494,7 +526,7 @@ try {
   });
   await normal.page.goto(`${baseURL}/week`);
   await normal.page
-    .getByRole("heading", { name: "Your week, in small wins.", exact: true })
+    .getByRole("heading", { name: "This week", exact: true })
     .waitFor();
   await normal.syncGroup("progress");
   if (!weekDates().includes(pastDay))
@@ -533,7 +565,7 @@ try {
     })
     .click();
   await expect(
-    lateDialog.getByText(/No original requirements were saved/),
+    lateDialog.getByText(/Original tasks weren’t saved/),
   ).toHaveCount(0);
   await lateDialog
     .getByRole("checkbox", {
@@ -576,6 +608,34 @@ try {
     assert.deepEqual(newSession.snapshot, encodeFirestore(historicalSnapshot));
     assert.equal(newSession.lateRequirementsSource, "saved_history");
   });
+  await normal.page.goto(`${baseURL}/habits/${historicalTask.id}/edit`);
+  await expect(
+    normal.page.getByRole("textbox", { name: "T1 task 1", exact: true }),
+  ).toHaveValue("999 reps Push-ups");
+  await expect(normal.page.getByRole("spinbutton")).toHaveCount(0);
+  await normal.page
+    .getByRole("checkbox", {
+      name: "T1 is manageable. T2 and T3 add extra tasks.",
+    })
+    .check();
+  await normal.page
+    .getByRole("button", { name: "Save habit", exact: true })
+    .click();
+  await expect(
+    normal.page.getByRole("heading", { name: "My habits.", exact: true }),
+  ).toBeVisible();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    const current = (
+      await getDoc(doc(db, "users", member.uid, "tasks", historicalTask.id))
+    ).data();
+    assert.equal(current.levels.t1.tasks[0], "999 reps Push-ups");
+    assert.deepEqual(
+      (await getDoc(doc(db, "users", member.uid, "progress", pastId))).data()
+        .snapshot,
+      encodeFirestore(historicalSnapshot),
+    );
+  });
   assert.deepEqual(errors, []);
   writeFileSync(
     "screenshots/access-results.json",
@@ -600,6 +660,7 @@ try {
           "Cloud past-day correction preserves original session",
           "Cloud past-day creation restores historical requirements",
           "Confirmed completion modal saves only its reviewed cloud tier",
+          "Legacy targets become task text without changing past snapshots",
           "No browser exceptions",
         ],
       },

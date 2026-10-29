@@ -1,3 +1,5 @@
+import { CATEGORY_ICONS } from "./category-icons.js";
+import { isTaskOnly } from "./domain";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   BrowserRouter,
@@ -10,6 +12,18 @@ import {
   useLocation,
 } from "react-router-dom";
 import {
+  Dumbbell,
+  Brain,
+  Palette,
+  Briefcase,
+  Compass,
+  HeartPulse,
+  BedDouble,
+  Utensils,
+  Users,
+  Wallet,
+  House,
+  Sprout,
   Home,
   BarChart3,
   Plus,
@@ -78,19 +92,32 @@ import {
   progressId,
 } from "./domain";
 const icons = {
-  Fitness: Flame,
-  Study: BookOpen,
-  Mindfulness: Heart,
-  Creative: Sparkles,
-  Career: Target,
-  Life: Sun,
+  Dumbbell,
+  BookOpen,
+  Brain,
+  Palette,
+  Briefcase,
+  Compass,
+  HeartPulse,
+  BedDouble,
+  Utensils,
+  Users,
+  Wallet,
+  House,
+  Sprout,
 };
 export const cx = (...x) => x.filter(Boolean).join(" ");
 
 export function CategoryIcon({ category }) {
-  const Icon = icons[category] || Mountain;
+  const iconName = CATEGORY_ICONS[category];
+  const Icon = icons[iconName] || Mountain;
   return (
-    <span className={`category-icon cat-${category}`}>
+    <span
+      className={`category-icon cat-${category}`}
+      data-category-icon={iconName || "Mountain"}
+      title={category || "Habit"}
+      aria-hidden="true"
+    >
       <Icon size={19} />
     </span>
   );
@@ -127,8 +154,8 @@ export function PageTitle({ eyebrow, title, children, back }) {
 export function Stats({ items }) {
   return (
     <div className="stats-grid">
-      {items.map(([value, label]) => (
-        <div key={label}>
+      {items.map(([value, label], index) => (
+        <div key={`${label}-${index}`}>
           <strong>{value}</strong>
           <span>{label}</span>
         </div>
@@ -137,6 +164,14 @@ export function Stats({ items }) {
   );
 }
 export function RequirementText({ r, additional = false }) {
+  if (!r?.label?.trim()) return <span className="muted">Add a task</span>;
+  if (isTaskOnly(r))
+    return (
+      <>
+        {additional ? "+ " : ""}
+        {r.label}
+      </>
+    );
   return (
     <>
       <strong>
@@ -171,18 +206,24 @@ export function Progression({ task }) {
     </div>
   );
 }
-export function Avatar({ small = false }) {
-  const { user } = useApp();
-  return user?.photoURL ? (
-    <img
-      referrerPolicy="no-referrer"
+export function Avatar({ small = false, person }) {
+  const { user: current } = useApp();
+  const user = person || current;
+  return (
+    <span
       className={cx("avatar", small && "small")}
-      src={user.photoURL}
-      alt={user.displayName || "Profile"}
-    />
-  ) : (
-    <span className={cx("avatar", small && "small")}>
-      <User size={small ? 16 : 22} />
+      aria-label={user ? `Avatar for ${user.displayName}` : "Guest avatar"}
+    >
+      {user?.photoURL ? (
+        <img
+          src={user.photoURL}
+          alt=""
+          referrerPolicy="no-referrer"
+          loading="lazy"
+        />
+      ) : (
+        <User size={small ? 16 : 22} />
+      )}
     </span>
   );
 }

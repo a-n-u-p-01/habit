@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "checks": [
+    "Only task inputs, no amount/unit fields",
+    "More than four tasks per tier",
+    "New categories",
+    "Private template creation",
+    "All T1 tasks complete through radio modal",
+    "Readable task-only summary",
+    "Legacy quantities converted to meaningful text",
+    "Historical snapshots unchanged",
+    "Template creation and reuse",
+    "Mobile form layout"
+  ]
+}

@@ -1,0 +1,1 @@
+Removed the Manage habits, Review your week, and Settings & data shortcut cards from the Help & feedback guide section. Other content and functionality are unchanged, and all previous updates are included. All 55 unit tests and the local-module JSX/CSS check passed with third-party imports external; full app/browser testing remains unverified.

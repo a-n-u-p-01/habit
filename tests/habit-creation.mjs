@@ -16,18 +16,11 @@ page.on("pageerror", (e) => errors.push(e.message));
 const data = () =>
   page.evaluate(() => JSON.parse(localStorage.getItem("win-guest-v1") || "{}"));
 async function fillManual() {
-  await page.getByPlaceholder("e.g. Move a little").fill("Read one page");
-  for (const n of [1, 2, 3]) {
+  await page.getByPlaceholder("e.g. Read daily").fill("Read one page");
+  for (const n of [1, 2, 3])
     await page
-      .getByRole("textbox", { name: `T${n} activity 1`, exact: true })
-      .fill("Reading");
-    await page
-      .getByRole("spinbutton", { name: `T${n} amount 1`, exact: true })
-      .fill(String(n));
-    await page
-      .getByRole("textbox", { name: `T${n} unit 1`, exact: true })
-      .fill("pages");
-  }
+      .getByRole("textbox", { name: `T${n} task 1`, exact: true })
+      .fill(["Read 1 page", "Read 2 more pages", "Write one sentence"][n - 1]);
   while (
     await page.locator('.weekday-picker button[aria-pressed="false"]').count()
   )
@@ -36,11 +29,13 @@ async function fillManual() {
       .first()
       .click();
   await page
-    .getByRole("checkbox", { name: "T2 and T3 are additional amounts" })
+    .getByRole("checkbox", {
+      name: "T1 is manageable. T2 and T3 add extra tasks.",
+    })
     .check();
 }
 try {
-  await page.goto("http://127.0.0.1:4173/tasks/new");
+  await page.goto("http://127.0.0.1:4173/habits/new");
   await expect(
     page.getByRole("heading", { name: "Start a new habit.", exact: true }),
   ).toBeVisible();
@@ -49,7 +44,7 @@ try {
   ).toHaveAttribute("href", "/templates");
   await expect(
     page.getByRole("link", { name: "Create manually", exact: true }),
-  ).toHaveAttribute("href", "/tasks/new/manual");
+  ).toHaveAttribute("href", "/habits/new/manual");
   mkdirSync("screenshots", { recursive: true });
   await page.screenshot({
     path: "screenshots/habit-create-choice.png",
@@ -59,9 +54,7 @@ try {
     .getByRole("link", { name: "Create manually", exact: true })
     .click();
   await expect(
-    page.getByText(
-      "Saving this habit also saves a private reusable copy in My Templates. It will not be published.",
-    ),
+    page.getByText("Also saved privately in My Templates."),
   ).toBeVisible();
   await fillManual();
   await page
@@ -94,12 +87,14 @@ try {
   await page.reload();
   assert.equal((await data()).templates.length, 1);
   await page.goto(`http://127.0.0.1:4173/tasks/${task.id}/edit`);
-  await page.getByPlaceholder("e.g. Move a little").fill("Read a little today");
+  await page.getByPlaceholder("e.g. Read daily").fill("Read a little today");
   await page
-    .getByRole("checkbox", { name: "T2 and T3 are additional amounts" })
+    .getByRole("checkbox", {
+      name: "T1 is manageable. T2 and T3 add extra tasks.",
+    })
     .check();
   await page.getByRole("button", { name: "Save habit", exact: true }).click();
-  await expect(page.locator(".today-task-card h3")).toHaveText([
+  await expect(page.locator(".habit-row-copy h3")).toHaveText([
     "Read a little today",
   ]);
   stored = await data();
@@ -119,9 +114,11 @@ try {
   await expect(
     page.getByRole("heading", { name: "Customize habit", exact: true }),
   ).toBeVisible();
-  await page.getByPlaceholder("e.g. Move a little").fill("Read in the evening");
+  await page.getByPlaceholder("e.g. Read daily").fill("Read in the evening");
   await page
-    .getByRole("checkbox", { name: "T2 and T3 are additional amounts" })
+    .getByRole("checkbox", {
+      name: "T1 is manageable. T2 and T3 add extra tasks.",
+    })
     .check();
   await page.getByRole("button", { name: "Save habit", exact: true }).click();
   await expect(page.locator(".today-task-card h3")).toHaveText([
@@ -136,7 +133,7 @@ try {
   );
   assert.deepEqual(stored.templates[0], template);
   assert.notEqual(stored.tasks[1].levels[0][0].id, template.levels[0][0].id);
-  await page.goto("http://127.0.0.1:4173/tasks/new");
+  await page.goto("http://127.0.0.1:4173/habits/new");
   await page.getByRole("link", { name: "Use a template", exact: true }).click();
   const starter = page.locator(".template-card").filter({
     has: page.getByRole("heading", { name: "A little reading", exact: true }),
@@ -145,7 +142,7 @@ try {
   await expect(
     page.getByRole("heading", { name: "Customize habit", exact: true }),
   ).toBeVisible();
-  await expect(page.getByPlaceholder("e.g. Move a little")).toHaveValue(
+  await expect(page.getByPlaceholder("e.g. Read daily")).toHaveValue(
     "A little reading",
   );
   // A real New habit link clears the selected-template navigation state.

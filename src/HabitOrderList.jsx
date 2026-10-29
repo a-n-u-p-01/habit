@@ -53,6 +53,7 @@ function HabitRow({
         "manage-task",
         "habit-sortable",
         isDragging && "is-dragging",
+        habit.active === false && "is-paused",
       )}
       style={{
         transform: CSS.Transform.toString(transform),
@@ -86,6 +87,7 @@ function HabitRow({
             type="button"
             className="icon-button"
             aria-label={`Move ${habit.name} up`}
+            title="Move up"
             disabled={disabled || index === 0}
             onClick={() => onMove(index, index - 1)}
           >
@@ -95,6 +97,7 @@ function HabitRow({
             type="button"
             className="icon-button"
             aria-label={`Move ${habit.name} down`}
+            title="Move down"
             disabled={disabled || index === count - 1}
             onClick={() => onMove(index, index + 1)}
           >
@@ -112,7 +115,8 @@ function HabitRow({
         <Link
           className="icon-button"
           aria-label={`Edit ${habit.name}`}
-          to={`/tasks/${habit.id}/edit`}
+          title="Edit habit"
+          to={`/habits/${habit.id}/edit`}
         >
           <Edit3 size={17} />
         </Link>
@@ -120,6 +124,7 @@ function HabitRow({
           type="button"
           className="icon-button danger"
           aria-label={`Delete ${habit.name}`}
+          title="Delete habit"
           disabled={disabled}
           onClick={() => onRemove(habit)}
         >
@@ -147,9 +152,7 @@ export function HabitOrderList({ habits, onPause, onRemove }) {
     setMessage("");
     try {
       await app.reorderHabits(moveHabit(ids, from, to));
-      setMessage(
-        "Habit order saved. The same order is used throughout the app.",
-      );
+      setMessage("Order saved.");
     } catch (e) {
       setMessage(`Could not save the order. ${e.message}`);
     } finally {
@@ -158,10 +161,6 @@ export function HabitOrderList({ habits, onPause, onRemove }) {
   }
   return (
     <section className="habit-order-section" aria-label="Arrange my habits">
-      <p className="habit-order-hint">
-        Drag the grip to arrange your habits. You can also use the up/down
-        buttons. Paused habits keep their place.
-      </p>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}

@@ -39,7 +39,7 @@ await expect(
   page
     .getByRole("navigation", { name: "Habit shortcuts" })
     .getByRole("link", { name: "New habit", exact: true }),
-).toHaveAttribute("href", "/tasks/new");
+).toHaveAttribute("href", "/habits/new");
 await expect(
   page
     .getByRole("navigation", { name: "Habit shortcuts" })
@@ -47,14 +47,13 @@ await expect(
 ).toHaveAttribute("href", "/templates");
 await page.getByRole("link", { name: "Create your first habit" }).click();
 await page.getByRole("link", { name: "Create manually", exact: true }).click();
-await page.getByPlaceholder("e.g. Move a little").fill("Morning movement");
+await page.getByPlaceholder("e.g. Read daily").fill("Morning movement");
 for (let i = 1; i <= 3; i++) {
   await page
-    .getByRole("textbox", { name: `T${i} activity 1`, exact: true })
-    .fill("Push-ups");
-  await page
-    .getByRole("spinbutton", { name: `T${i} amount 1`, exact: true })
-    .fill(String(i === 1 ? 10 : 5));
+    .getByRole("textbox", { name: `T${i} task 1`, exact: true })
+    .fill(
+      ["Do 10 push-ups", "Do 5 more push-ups", "Do 5 final push-ups"][i - 1],
+    );
 }
 // Select all weekdays so smoke test is independent of execution day.
 while (
@@ -65,7 +64,9 @@ while (
     .first()
     .click();
 await page
-  .getByRole("checkbox", { name: "T2 and T3 are additional amounts" })
+  .getByRole("checkbox", {
+    name: "T1 is manageable. T2 and T3 add extra tasks.",
+  })
   .check();
 await page.getByRole("button", { name: "Save habit", exact: true }).click();
 await page.getByRole("heading", { name: "Morning movement" }).waitFor();
@@ -93,7 +94,9 @@ const confirm = async () => {
   await expect(modal).toHaveCount(0);
 };
 await openTier(1);
-await expect(modal.locator(".completion-task-list")).toContainText("10 reps");
+await expect(modal.locator(".completion-task-list")).toContainText(
+  "Do 10 push-ups",
+);
 await expect(
   modal.getByRole("button", { name: "Complete", exact: true }),
 ).toBeDisabled();
@@ -114,7 +117,9 @@ await card
   })
   .focus();
 await page.keyboard.press("Enter");
-await expect(modal.locator(".completion-task-list")).toContainText("+ 5 reps");
+await expect(modal.locator(".completion-task-list")).toContainText(
+  "Do 5 more push-ups",
+);
 await page.keyboard.press("Escape");
 await expect(modal).toHaveCount(0);
 await expect(
@@ -153,10 +158,10 @@ await expect(card.locator(".tier")).toHaveText("T3");
 const taskId = await page.evaluate(
   () => JSON.parse(localStorage.getItem("win-guest-v1")).tasks[0].id,
 );
-await page.goto(`http://127.0.0.1:4173/task/${taskId}`);
-await page.getByText("20 reps", { exact: true }).waitFor();
+await page.goto(`http://127.0.0.1:4173/habits/${taskId}`);
+await page.getByText("Do 10 push-ups", { exact: true }).first().waitFor();
 await page.reload();
-await page.getByText("20 reps", { exact: true }).waitFor();
+await page.getByText("Do 10 push-ups", { exact: true }).first().waitFor();
 await page.getByRole("link", { name: "Done for today", exact: true }).click();
 await page
   .getByRole("heading", { name: "You kept your promises today." })
@@ -173,13 +178,9 @@ await page.screenshot({
   fullPage: true,
 });
 await page.goto("http://127.0.0.1:4173/week");
-await page
-  .getByRole("heading", { name: "Your week, in small wins." })
-  .waitFor();
+await page.getByRole("heading", { name: "This week" }).waitFor();
 await page.goto("http://127.0.0.1:4173/analytics");
-await page
-  .getByRole("heading", { name: "Look how far you've come." })
-  .waitFor();
+await page.getByRole("heading", { name: "My progress" }).waitFor();
 await page.goto("http://127.0.0.1:4173/templates");
 await page.getByRole("heading", { name: "A little reading" }).waitFor();
 await page
@@ -189,13 +190,19 @@ await page
   .click();
 await page.getByRole("heading", { name: "Customize habit" }).waitFor();
 assert.equal(
-  await page.getByPlaceholder("e.g. Move a little").inputValue(),
+  await page.getByPlaceholder("e.g. Read daily").inputValue(),
   "A little reading",
 );
-await page.goto("http://127.0.0.1:4173/review");
+await page.goto("http://127.0.0.1:4173/week/review");
 await page.getByLabel("What worked?").fill("An achievable minimum helped.");
 await page.getByRole("button", { name: "Save my reflection" }).click();
 await page.reload();
+await expect(
+  page.getByRole("region", { name: "Saved weekly reflection" }),
+).toBeVisible();
+await page
+  .getByRole("button", { name: "Edit reflection", exact: true })
+  .click();
 await expect(page.getByLabel("What worked?")).toHaveValue(
   "An achievable minimum helped.",
 );
@@ -215,8 +222,8 @@ for (const route of [
   "/analytics",
   "/profile",
   "/settings",
-  "/tasks/new",
-  "/review",
+  "/habits/new",
+  "/week/review",
   "/templates",
 ]) {
   await page.goto(`http://127.0.0.1:4173${route}`);

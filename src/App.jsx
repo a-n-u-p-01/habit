@@ -1,3 +1,10 @@
+import { AppLoading, ContentLoading, StartupRecovery } from "./LoadingStates";
+import { startupPhase } from "./startup.js";
+import { LegacyRedirect } from "./LegacyRedirect";
+import { isHabitCreationPath } from "./routing.js";
+import { HelpCenter } from "./HelpCenter";
+import { MyHabits } from "./screens/MyHabits";
+import { NameSetup } from "./ProfileName";
 import {
   cx,
   CategoryIcon,
@@ -9,7 +16,7 @@ import {
   Progression,
   Avatar,
 } from "./components";
-import { Profile, SettingsPage, Help } from "./screens/Account";
+import { SettingsPage } from "./screens/Account";
 import { Templates, TemplateDetail } from "./screens/Templates";
 import { Week, Analytics, WeeklyReview } from "./screens/Insights";
 import { NewHabit, TaskEditor, TaskFlow } from "./screens/Tasks";
@@ -296,13 +303,25 @@ function Shell() {
     const timer = setTimeout(() => app.setNotice(""), 5000);
     return () => clearTimeout(timer);
   }, [app.notice]);
-  if (!app.authReady)
+  const startup = startupPhase(app);
+  if (startup === "loading")
     return (
-      <main className="loading">
-        <Mountain />
-        <p>Finding your path…</p>
-      </main>
+      <AppLoading
+        fullScreen
+        offline={!app.online}
+        onRetry={() => window.location.reload()}
+      />
     );
+  if (startup === "offline" || startup === "error")
+    return (
+      <StartupRecovery
+        offline={startup === "offline"}
+        error={app.error || app.profileError}
+        onRetry={() => window.location.reload()}
+        onSignOut={() => app.logout()}
+      />
+    );
+  if (startup === "name-setup") return <NameSetup />;
   if (location.pathname === "/welcome")
     return (
       <>
@@ -330,14 +349,15 @@ function Shell() {
         <nav>
           {[
             [Home, "Today", "/"],
+            [Target, "My habits", "/habits"],
             [Calendar, "This week", "/week"],
             [BarChart3, "My progress", "/analytics"],
             [Layers, "Templates", "/templates"],
-            [User, "My space", "/profile"],
-            [HelpCircle, "Report or suggest", "/feedback"],
+            [Settings, "Settings", "/settings"],
+            [HelpCircle, "Help & feedback", "/help"],
             ...(access.isStaff
               ? [
-                  [Shield, "Users & roles", "/admin/users"],
+                  [Shield, "Users", "/admin/users"],
                   [BookOpen, "Feedback inbox", "/admin/feedback"],
                 ]
               : []),
@@ -348,7 +368,7 @@ function Shell() {
             </NavLink>
           ))}
         </nav>
-        <Link className="button" to="/tasks/new">
+        <Link className="button" to="/habits/new">
           <Plus size={18} /> Create a habit
         </Link>
         <div className="sidebar-bottom">
@@ -357,11 +377,11 @@ function Shell() {
             <br />
             <strong>Just win today.</strong>”
           </div>
-          <Link className="account" to="/profile">
+          <Link className="account" to="/settings">
             <Avatar />
             <span>
-              {app.user?.displayName?.split(" ")[0] || "Your own journey"}
-              <small>{app.user ? "Personal space" : "On this device"}</small>
+              {app.user?.displayName || "Your own journey"}
+              <small>{app.user ? "Settings" : "On this device"}</small>
             </span>
             <Settings size={17} />
           </Link>
@@ -378,16 +398,6 @@ function Shell() {
           </button>
           <span className="topbar-word">A LITTLE PROGRESS, EVERY DAY.</span>
           <div className="topbar-actions">
-            <span className="sync-state">
-              {app.online ? <Cloud size={15} /> : <CloudOff size={15} />}{" "}
-              {app.online
-                ? app.user
-                  ? app.pending
-                    ? "Syncing…"
-                    : "Cloud connected"
-                  : "Device only"
-                : "Offline"}
-            </span>
             <button
               className="icon-button"
               aria-label="Toggle color theme"
@@ -397,15 +407,16 @@ function Shell() {
             >
               {app.theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
             </button>
-            <Link to="/profile">
+            <Link to="/settings">
               <Avatar small />
             </Link>
           </div>
         </header>
         {!app.online && (
           <div className="banner">
-            You're offline. Cached habits are available; new cloud habit
-            sessions need a connection. Changes sync when you reconnect.
+            You're offline. Habits already loaded in this tab are available; new
+            cloud habit sessions need a connection. Changes sync when you
+            reconnect. Keep this tab open until they sync.
           </div>
         )}
         {app.error && (
@@ -429,17 +440,19 @@ function Shell() {
         )}
         <main className="main-content">
           {app.loading ? (
-            <div className="loading">
-              <RefreshCw className="spin" />
-              <p>Gathering your wins…</p>
-            </div>
+            <ContentLoading />
           ) : (
             <Routes>
               <Route path="/" element={<Today />} />
-              <Route path="/tasks/new" element={<NewHabit />} />
-              <Route path="/tasks/new/manual" element={<TaskEditor />} />
-              <Route path="/tasks/:id/edit" element={<TaskEditor />} />
-              <Route path="/task/:id" element={<TaskFlow />} />
+              <Route path="/tasks/new" element={<LegacyRedirect />} />
+              <Route path="/tasks/new/manual" element={<LegacyRedirect />} />
+              <Route path="/tasks/:id/edit" element={<LegacyRedirect />} />
+              <Route path="/task/:id" element={<LegacyRedirect />} />
+              <Route path="/review" element={<LegacyRedirect />} />
+              <Route path="/habits/new" element={<NewHabit />} />
+              <Route path="/habits/new/manual" element={<TaskEditor />} />
+              <Route path="/habits/:id/edit" element={<TaskEditor />} />
+              <Route path="/habits/:id" element={<TaskFlow />} />
               <Route path="/week" element={<Week />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/templates" element={<Templates />} />
@@ -452,11 +465,12 @@ function Shell() {
                 element={<TaskEditor templateMode />}
               />
               <Route path="/templates/:id" element={<TemplateDetail />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/review" element={<WeeklyReview />} />
+              <Route path="/profile" element={<LegacyRedirect />} />
+              <Route path="/habits" element={<MyHabits />} />
+              <Route path="/week/review" element={<WeeklyReview />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/help" element={<Help />} />
-              <Route path="/feedback" element={<FeedbackPage />} />
+              <Route path="/help" element={<HelpCenter />} />
+              <Route path="/feedback" element={<LegacyRedirect />} />
               <Route
                 path="/admin/users"
                 element={
@@ -498,16 +512,25 @@ function Shell() {
       <nav className="bottom-nav">
         {[
           [Home, "Today", "/"],
-          [BarChart3, "Progress", "/analytics"],
-          [Plus, "New", "/tasks/new"],
+          [Target, "My habits", "/habits"],
+          [Plus, "New", "/habits/new"],
           [Layers, "Templates", "/templates"],
-          [User, "My space", "/profile"],
+          [Settings, "Settings", "/settings"],
         ].map(([Icon, label, path]) => (
           <NavLink
             key={path}
             to={path}
             end={path === "/"}
-            className={path === "/tasks/new" ? "new-nav" : ""}
+            className={({ isActive }) =>
+              cx(
+                path === "/habits/new" && "new-nav",
+                isActive &&
+                  !(
+                    path === "/habits" && isHabitCreationPath(location.pathname)
+                  ) &&
+                  "active",
+              )
+            }
           >
             <Icon size={21} />
             <span>{label}</span>

@@ -1,0 +1,149 @@
+{
+  "scope": "Isolated CSS fixture with representative signed-in/guest settings markup and real workspace width rules; not full React workflows",
+  "results": [
+    {
+      "signedIn": true,
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": true,
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "signedIn": true,
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": true,
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "signedIn": true,
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": true,
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "signedIn": true,
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": true,
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "signedIn": true,
+      "width": 1024,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": true,
+      "width": 1024,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "signedIn": true,
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": true,
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 1024,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 1024,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "signedIn": false,
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    }
+  ]
+}

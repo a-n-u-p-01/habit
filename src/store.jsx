@@ -1,3 +1,4 @@
+import { normalizeAppName, confirmedAppName } from "./profile";
 import { preparePastCompletion } from "./history";
 import React, {
   createContext,
@@ -33,8 +34,13 @@ import {
   getAggregateFromServer,
   count,
   average,
+  startAfter,
+  documentId,
+  waitForPendingWrites,
+  clearIndexedDbPersistence,
+  terminate,
 } from "firebase/firestore";
-import { auth, db, google } from "./firebase";
+import { auth, db, google, legacyCacheStatus } from "./firebase";
 import { encodeFirestore, decodeFirestore } from "./serialization";
 import {
   achieved,
@@ -76,6 +82,65 @@ export function AppProvider({ children }) {
     [notice, setNotice] = useState(""),
     [online, setOnline] = useState(navigator.onLine),
     [pending, setPending] = useState(false);
+  const [dataOwner, setDataOwner] = useState(null);
+  const [profileState, setProfileState] = useState({
+    uid: null,
+    ready: false,
+    value: null,
+    error: "",
+  });
+  const [oldCacheCleared, setOldCacheCleared] = useState(null);
+  useEffect(() => {
+    legacyCacheStatus.then(setOldCacheCleared);
+  }, []);
+  const profileMatches = profileState.uid === user?.uid;
+  const profileReady = !user || (profileMatches && profileState.ready);
+  const appName = profileMatches ? confirmedAppName(profileState.value) : "";
+  const googlePhoto = (value) =>
+    typeof value === "string" &&
+    value.length <= 2000 &&
+    /^https:\/\/[A-Za-z0-9.-]+\.googleusercontent\.com\//.test(value)
+      ? value
+      : "";
+  const providerPhoto = googlePhoto(user?.photoURL);
+  const displayUser = user
+    ? {
+        uid: user.uid,
+        displayName: appName || "App user",
+        photoURL: profileMatches
+          ? googlePhoto(profileState.value?.photoURL)
+          : "",
+        nameConfirmed: !!appName,
+      }
+    : null;
+  useEffect(() => {
+    if (
+      !user ||
+      !appName ||
+      !online ||
+      profileState.value?.photoURL === providerPhoto
+    )
+      return;
+    setDoc(
+      doc(db, "users", user.uid),
+      {
+        displayName: appName,
+        nameConfirmed: true,
+        photoURL: providerPhoto,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ).catch(() => {});
+  }, [user?.uid, appName, providerPhoto, profileState.value?.photoURL, online]);
+  useEffect(() => {
+    if (!user || !pending) return;
+    const warnBeforeClose = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeClose);
+    return () => window.removeEventListener("beforeunload", warnBeforeClose);
+  }, [user?.uid, pending]);
   const [theme, setThemeState] = useState(
     () => localStorage.getItem("win-theme") || "dark",
   );
@@ -101,6 +166,18 @@ export function AppProvider({ children }) {
   useEffect(
     () =>
       onAuthStateChanged(auth, (u) => {
+        setData(blank());
+        setDataOwner(null);
+        setPending(false);
+        setLoading(!!u);
+        setProfileState({
+          uid: u?.uid || null,
+          ready: !u,
+          value: null,
+          error: "",
+        });
+        setError("");
+        setNotice("");
         setUser(u);
         setAuthReady(true);
       }),
@@ -118,6 +195,40 @@ export function AppProvider({ children }) {
     };
   }, []);
   useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const owner = user.uid;
+    const unsubscribe = onSnapshot(
+      doc(db, "users", owner),
+      { includeMetadataChanges: true },
+      (snapshot) => {
+        if (!active || auth.currentUser?.uid !== owner) return;
+        // A chosen identity is only adopted after the server acknowledges it.
+        // Otherwise a fast reload could discard a memory-only pending name.
+        if (snapshot.metadata.hasPendingWrites) return;
+        setProfileState({
+          uid: owner,
+          ready: snapshot.exists() || !snapshot.metadata.fromCache,
+          value: snapshot.exists() ? snapshot.data() : null,
+          error: "",
+        });
+      },
+      (e) => {
+        if (active && auth.currentUser?.uid === owner)
+          setProfileState({
+            uid: owner,
+            ready: true,
+            value: null,
+            error: `Your private profile could not load: ${e.message}`,
+          });
+      },
+    );
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [user?.uid]);
+  useEffect(() => {
     if (!authReady) return;
     if (!user) {
       setData(blank());
@@ -125,7 +236,10 @@ export function AppProvider({ children }) {
       setPending(false);
       return;
     }
+    let active = true;
+    const owner = user.uid;
     setLoading(true);
+    setDataOwner(owner);
     setError("");
     const ready = new Set(),
       pendingGroups = new Set();
@@ -134,6 +248,7 @@ export function AppProvider({ children }) {
         collection(db, "users", user.uid, group),
         { includeMetadataChanges: true },
         (snap) => {
+          if (!active || auth.currentUser?.uid !== owner) return;
           ready.add(group);
           if (snap.metadata.hasPendingWrites) pendingGroups.add(group);
           else pendingGroups.delete(group);
@@ -148,6 +263,7 @@ export function AppProvider({ children }) {
           if (ready.size === GROUPS.length) setLoading(false);
         },
         (e) => {
+          if (!active || auth.currentUser?.uid !== owner) return;
           setError(
             `Cloud data: ${e.message} Check the deployed Firestore rules.`,
           );
@@ -155,21 +271,14 @@ export function AppProvider({ children }) {
         },
       ),
     );
-    setDoc(
-      doc(db, "users", user.uid),
-      {
-        displayName: user.displayName || "You",
-        photoURL: user.photoURL || "",
-        email: user.email || "",
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    ).catch((e) => setError(e.message));
-    return () => unsub.forEach((fn) => fn());
+    return () => {
+      active = false;
+      unsub.forEach((fn) => fn());
+    };
   }, [user, authReady]);
   const [orderOverride, setOrderOverride] = useState(null);
   const [reordering, setReordering] = useState(false);
-  const raw = user ? data : guest;
+  const raw = user ? (dataOwner === user.uid ? data : blank()) : guest;
   const ownerKey = user?.uid || "guest";
   const override = orderOverride?.owner === ownerKey ? orderOverride.ids : null;
   const ranks = override && new Map(override.map((id, index) => [id, index]));
@@ -332,6 +441,100 @@ export function AppProvider({ children }) {
       await commit;
     } catch (e) {
       fail(e);
+    }
+  }
+  async function saveProfileName(input) {
+    if (!user) throw new Error("Sign in to choose an app name.");
+    if (!online) throw new Error("Reconnect to save your app name.");
+    const name = normalizeAppName(input),
+      owner = user.uid;
+    await runTransaction(db, async (transaction) => {
+      const reference = doc(db, "users", owner);
+      const existing = await transaction.get(reference);
+      transaction.set(
+        reference,
+        {
+          displayName: name,
+          nameConfirmed: true,
+          photoURL: providerPhoto,
+          updatedAt: serverTimestamp(),
+          ...(!existing.exists() ? { createdAt: serverTimestamp() } : {}),
+        },
+        { merge: true },
+      );
+    });
+    // These are only the user's own existing records, never other people's
+    // saved copies. Batch size and cursor keep large accounts bounded.
+    let contentUpdated = true;
+    for (const group of ["templates", "reviews", "feedback"]) {
+      try {
+        let cursor = null;
+        while (true) {
+          const constraints = [
+            where("authorId", "==", owner),
+            orderBy(documentId()),
+            limit(200),
+          ];
+          if (cursor) constraints.push(startAfter(cursor));
+          const page = await getDocs(
+            query(collection(db, group), ...constraints),
+          );
+          const batch = writeBatch(db);
+          for (const row of page.docs)
+            if (row.data().authorName !== name)
+              batch.update(
+                row.ref,
+                group === "feedback"
+                  ? { authorName: name, updatedAt: serverTimestamp() }
+                  : { authorName: name, updatedAt: Date.now() },
+              );
+          await batch.commit();
+          if (page.size < 200) break;
+          cursor = page.docs[page.docs.length - 1];
+        }
+      } catch {
+        contentUpdated = false;
+      }
+    }
+    return { contentUpdated, name };
+  }
+  async function removeLegacyCache() {
+    if (!online) {
+      setError(
+        "Reconnect before removing the older offline cache. Pending saves finish automatically when connected.",
+      );
+      return;
+    }
+    if (
+      !window.confirm(
+        "Remove the older offline cloud cache from this browser? Any unsynced work left by an older app version will be lost. Keep older app tabs open until their pending changes finish saving, then close them first. Device-only guest data is not removed. This cannot be undone.",
+      )
+    )
+      return;
+    await waitForPendingWrites(db);
+    await terminate(db);
+    try {
+      await clearIndexedDbPersistence(db);
+    } catch {
+      window.alert(
+        "The old cache was not removed. Let pending changes finish saving in the other app tabs, then close those tabs and try again.",
+      );
+    } finally {
+      window.location.reload();
+    }
+  }
+  async function logout() {
+    try {
+      if (pending && !online)
+        throw new Error(
+          "You have unsaved cloud changes. Reconnect so they can save automatically before you sign out.",
+        );
+      if (online) await waitForPendingWrites(db);
+      await signOut(auth);
+      // A fresh document discards the previous account's in-memory cloud cache.
+      window.location.replace("/");
+    } catch (e) {
+      setError(e.message);
     }
   }
   async function login(redirect = false) {
@@ -572,7 +775,8 @@ export function AppProvider({ children }) {
     });
   }
   async function publish(template) {
-    if (!user) throw Error("Sign in to publish a template.");
+    if (!user || !appName)
+      throw Error("Choose your app name before publishing a template.");
     if (!online) throw Error("Reconnect to publish.");
     const ref = doc(db, "templates", template.id);
     const value = clean({
@@ -582,18 +786,41 @@ export function AppProvider({ children }) {
       levels: template.levels,
       weekdays: template.weekdays,
       authorId: user.uid,
-      authorName: user.displayName || "Community member",
+      authorName: appName,
       published: true,
       updatedAt: Date.now(),
     });
-    await setDoc(ref, encodeFirestore(value));
-    await persist("templates", template.id, { ...template, published: true });
+    const batch = writeBatch(db);
+    batch.set(ref, encodeFirestore(value));
+    batch.set(
+      doc(db, "users", user.uid, "templates", template.id),
+      {
+        ...encodeFirestore(
+          clean({ ...template, id: template.id, published: true }),
+        ),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    await batch.commit();
     setNotice("Your template is now public.");
   }
   async function unpublish(template) {
-    if (!user) return;
-    await deleteDoc(doc(db, "templates", template.id));
-    await persist("templates", template.id, { ...template, published: false });
+    if (!user) throw Error("Sign in to unpublish a template.");
+    if (!online) throw Error("Reconnect to unpublish.");
+    const batch = writeBatch(db);
+    batch.delete(doc(db, "templates", template.id));
+    batch.set(
+      doc(db, "users", user.uid, "templates", template.id),
+      {
+        ...encodeFirestore(
+          clean({ ...template, id: template.id, published: false }),
+        ),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    await batch.commit();
     setNotice(
       "Template unpublished. Existing copies remain with their owners.",
     );
@@ -633,7 +860,7 @@ export function AppProvider({ children }) {
     return {
       exportedAt: new Date().toISOString(),
       version: 1,
-      profile: user ? { name: user.displayName, uid: user.uid } : null,
+      profile: user ? { name: appName, uid: user.uid } : null,
       data: source,
     };
   }
@@ -681,7 +908,12 @@ export function AppProvider({ children }) {
     <Context.Provider
       value={{
         ...current,
-        user,
+        user: displayUser,
+        profileReady,
+        profileError: profileMatches ? profileState.error : "",
+        oldCacheCleared,
+        removeLegacyCache,
+        saveProfileName,
         authReady,
         loading,
         error,
@@ -695,7 +927,7 @@ export function AppProvider({ children }) {
         persist,
         createHabitWithTemplate,
         login,
-        logout: () => signOut(auth),
+        logout,
         begin,
         check,
         winLevel,
@@ -743,17 +975,11 @@ export function usePublicTemplates() {
   return { templates, error, loading };
 }
 export async function templateStats(id) {
-  const [reviews, usage] = await Promise.all([
-    getAggregateFromServer(
-      query(collection(db, "reviews"), where("templateId", "==", id)),
-      { rating: average("rating"), reviews: count() },
-    ),
-    getAggregateFromServer(
-      query(collection(db, "templateUsages"), where("templateId", "==", id)),
-      { uses: count() },
-    ),
-  ]);
-  return { ...reviews.data(), ...usage.data() };
+  const reviews = await getAggregateFromServer(
+    query(collection(db, "reviews"), where("templateId", "==", id)),
+    { rating: average("rating"), reviews: count() },
+  );
+  return reviews.data();
 }
 export async function reviewTemplate(
   templateId,
@@ -762,11 +988,12 @@ export async function reviewTemplate(
   text,
   recommend,
 ) {
-  if (!user) throw Error("Sign in to leave a review.");
+  if (!user?.nameConfirmed)
+    throw Error("Choose your app name before leaving a review.");
   await setDoc(doc(db, "reviews", `${templateId}_${user.uid}`), {
     templateId,
     authorId: user.uid,
-    authorName: user.displayName || "Community member",
+    authorName: user.displayName,
     rating,
     text,
     recommend,
@@ -784,14 +1011,8 @@ export function listenReviews(templateId, cb, onError) {
     onError,
   );
 }
-export async function recordUsage(templateId, user) {
-  if (user && !templateId.startsWith("starter-"))
-    await setDoc(
-      doc(db, "templateUsages", `${templateId}_${user.uid}`),
-      { templateId, userId: user.uid },
-      { merge: true },
-    );
-}
+// Adopting a habit does not publish or collect a person's usage identifier.
+export async function recordUsage() {}
 export async function loadPublicTemplate(id) {
   const snapshot = await getDoc(doc(db, "templates", id));
   return snapshot.exists() ? { ...decodeFirestore(snapshot.data()), id } : null;

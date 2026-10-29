@@ -1,0 +1,51 @@
+{
+  "scope": "Static fixture using real stylesheet and representative table markup, not the running React app",
+  "checks": [
+    "Pinned names remain fixed at both scroll extremes",
+    "Opaque names cover scrolling badges",
+    "Single-line ellipsis and consistent row heights",
+    "No page-level horizontal overflow"
+  ],
+  "results": [
+    {
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "theme": "light",
+      "passed": true
+    }
+  ]
+}

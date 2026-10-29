@@ -82,9 +82,7 @@ const stored = () =>
   page.evaluate(() => JSON.parse(localStorage.getItem("win-guest-v1")));
 async function weekFor(key) {
   await page.goto("http://127.0.0.1:4173/week");
-  await page
-    .getByRole("heading", { name: "Your week, in small wins.", exact: true })
-    .waitFor();
+  await page.getByRole("heading", { name: "This week", exact: true }).waitFor();
   for (
     let offset = 0;
     !weekDates(-offset).includes(key) && offset < 3;
@@ -167,16 +165,14 @@ try {
     data.wins.filter((w) => w.taskId === tasks[0].id).map((w) => w.level),
     [1, 2],
   );
-  await expect(page.getByText("Logged later", { exact: true })).toBeVisible();
+  await expect(page.locator(".week-late-marker").first()).toBeVisible();
   await page
     .getByRole("button", {
       name: `Log completion for Legacy breathing on ${yesterday}`,
       exact: true,
     })
     .click();
-  await expect(
-    modal.getByText(/No original requirements were saved/),
-  ).toBeVisible();
+  await expect(modal.getByText(/Original tasks weren’t saved/)).toBeVisible();
   await modal
     .getByRole("checkbox", {
       name: /^I completed all the requirements shown on/,

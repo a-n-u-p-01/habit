@@ -18,6 +18,7 @@
     "Cloud past-day correction preserves original session",
     "Cloud past-day creation restores historical requirements",
     "Confirmed completion modal saves only its reviewed cloud tier",
+    "Legacy targets become task text without changing past snapshots",
     "No browser exceptions"
   ]
 }

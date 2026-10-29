@@ -1,0 +1,65 @@
+{
+  "scope": "Isolated Chromium fixture using the real stylesheet and representative markup, not the live React app",
+  "results": [
+    {
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 1024,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 1024,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    }
+  ]
+}

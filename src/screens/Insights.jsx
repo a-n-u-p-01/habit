@@ -1,6 +1,12 @@
 import { pastEntryInfo } from "../history";
 import { PastCompletionDialog } from "../PastCompletionDialog";
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useLayoutEffect,
+} from "react";
 import {
   BrowserRouter,
   Routes,
@@ -93,6 +99,7 @@ import {
 export function Week() {
   const app = useApp();
   const [correction, setCorrection] = useState(null);
+  const tableScroll = useRef(null);
   const [offset, setOffset] = useState(0),
     keys = weekDates(offset),
     stats = statistics(app.tasks, app.progress, keys),
@@ -104,150 +111,198 @@ export function Week() {
         app.progress.some((p) => p.date === k && p.taskId === t.id),
     ),
   );
+  useLayoutEffect(() => {
+    const scroller = tableScroll.current;
+    if (!scroller) return;
+    const current = scroller.querySelector("thead .today-col");
+    const pinned = scroller.querySelector("thead th:first-child");
+    if (offset !== 0 || !current || !pinned) {
+      scroller.scrollLeft = 0;
+      return;
+    }
+    const pinnedWidth = pinned.getBoundingClientRect().width;
+    const cell = current.getBoundingClientRect();
+    const left =
+      cell.left - scroller.getBoundingClientRect().left + scroller.scrollLeft;
+    // Center today only in the space to the right of the pinned habit column.
+    // No scrollIntoView: that can move the entire page horizontally.
+    scroller.scrollLeft = Math.max(
+      0,
+      left -
+        pinnedWidth -
+        (scroller.clientWidth - pinnedWidth - cell.width) / 2,
+    );
+  }, [offset, today]);
   return (
-    <>
-      <PageTitle
-        eyebrow="SHOWING UP ADDS UP"
-        title="Your week, in small wins."
-      />
-      <div className="period-navigation">
-        <button
-          className="icon-button"
-          aria-label="Previous week"
-          onClick={() => setOffset(offset - 1)}
-        >
-          <ChevronLeft />
-        </button>
-        <h2>
-          {parseDate(keys[0]).toLocaleDateString(undefined, {
-            month: "short",
-            day: "numeric",
-          })}{" "}
-          —{" "}
-          {parseDate(keys[6]).toLocaleDateString(undefined, {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
-        </h2>
-        <button
-          className="icon-button"
-          aria-label="Next week"
-          disabled={offset >= 0}
-          onClick={() => setOffset(offset + 1)}
-        >
-          <ChevronRight />
-        </button>
+    <div className="week-page">
+      <PageTitle title="This week" />
+      <div className="week-toolbar">
+        <div className="period-navigation">
+          <button
+            className="icon-button"
+            aria-label="Previous week"
+            onClick={() => setOffset(offset - 1)}
+          >
+            <ChevronLeft />
+          </button>
+          <h2>
+            {parseDate(keys[0]).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}{" "}
+            —{" "}
+            {parseDate(keys[6]).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </h2>
+          <button
+            className="icon-button"
+            aria-label="Next week"
+            disabled={offset >= 0}
+            onClick={() => setOffset(offset + 1)}
+          >
+            <ChevronRight />
+          </button>
+        </div>
+        <details className="habit-controls-help week-guide">
+          <summary
+            aria-label="Weekly progress help"
+            title="Weekly progress help"
+          >
+            <HelpCircle size={18} />
+          </summary>
+          <div className="habit-help-popover">
+            <strong>Weekly progress</strong>
+            <p>T1 is your daily minimum. T2 and T3 are optional extra tiers.</p>
+            <p>
+              Select an eligible day from the previous seven days to record
+              completed work. Rest days and older dates are read-only.
+            </p>
+            <p>A dot is not yet completed; a dash is not scheduled.</p>
+            <Link to="/help">Open help & feedback</Link>
+          </div>
+        </details>
       </div>
-      <p className="week-correction-hint">
-        Forgot to mark something you completed? Select a scheduled day from the
-        previous 7 days to log it. Older days and rest days stay read-only.
-      </p>
       <div className="panel week-table-wrap">
-        <table className="week-table">
-          <thead>
-            <tr>
-              <th>Your promises</th>
+        <div
+          className="week-table-scroll"
+          ref={tableScroll}
+          tabIndex={0}
+          role="region"
+          aria-label="Weekly habit progress"
+        >
+          <table className="week-table">
+            <caption className="visually-hidden">
+              Highest completed tier for each habit and day. Scroll horizontally
+              to see all seven days.
+            </caption>
+            <colgroup>
+              <col className="week-habit-col" />
               {keys.map((k) => (
-                <th className={k === today ? "today-col" : ""} key={k}>
-                  <small>{WEEKDAYS[parseDate(k).getDay()]}</small>
-                  {parseDate(k).getDate()}
-                </th>
+                <col key={k} />
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visibleTasks.map((t) => (
-              <tr key={t.id}>
-                <th>
-                  <CategoryIcon category={t.category} />
-                  {t.name}
-                </th>
-                {keys.map((k) => {
-                  const p = app.progress.find(
-                      (p) => p.taskId === t.id && p.date === k,
-                    ),
-                    a = achieved(p),
-                    s = scheduled(t, k) || p?.scheduled;
-                  const canCorrect =
-                    a < 3 && pastEntryInfo(t, p, k, today).eligible;
-                  const lateLabel = p?.lateLoggedAt
-                    ? `Logged later on ${new Date(p.lateLoggedAt).toLocaleString()}`
-                    : "";
-                  const marker = a ? (
-                    <span className={`grid-win t${a}`}>
-                      {a === 1 ? <Check size={15} /> : <>T{a}</>}
-                    </span>
-                  ) : s ? (
-                    <span className={cx("grid-empty", k < today && "past")}>
-                      {k < today ? "·" : ""}
-                    </span>
-                  ) : (
-                    <span className="not-scheduled">—</span>
-                  );
-                  return (
-                    <td
-                      key={k}
-                      title={[
-                        a
-                          ? `T${a} badge achieved`
-                          : !s
-                            ? "Not scheduled"
-                            : k > today
-                              ? "Coming up"
-                              : k === today
-                                ? "A chance to show up"
-                                : "A fresh start is always ahead",
-                        lateLabel,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    >
-                      {canCorrect ? (
-                        <button
-                          type="button"
-                          className="week-correction-button"
-                          aria-label={`Log completion for ${t.name} on ${k}`}
-                          onClick={() =>
-                            setCorrection({ taskId: t.id, day: k })
-                          }
-                        >
-                          {marker}
-                        </button>
-                      ) : (
-                        marker
-                      )}
-                      {p?.lateLoggedAt && (
-                        <span className="late-entry-label">Logged later</span>
-                      )}
-                    </td>
-                  );
-                })}
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Habit</th>
+                {keys.map((k) => (
+                  <th
+                    scope="col"
+                    className={k === today ? "today-col" : ""}
+                    key={k}
+                  >
+                    <small>{WEEKDAYS[parseDate(k).getDay()]}</small>
+                    {parseDate(k).getDate()}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {visibleTasks.map((t) => (
+                <tr key={t.id}>
+                  <th scope="row" title={t.name}>
+                    <div className="week-habit-label">
+                      <CategoryIcon category={t.category} />
+                      <span className="week-habit-name">{t.name}</span>
+                    </div>
+                  </th>
+                  {keys.map((k) => {
+                    const p = app.progress.find(
+                        (p) => p.taskId === t.id && p.date === k,
+                      ),
+                      a = achieved(p),
+                      s = scheduled(t, k) || p?.scheduled;
+                    const canCorrect =
+                      a < 3 && pastEntryInfo(t, p, k, today).eligible;
+                    const lateLabel = p?.lateLoggedAt
+                      ? `Logged later on ${new Date(p.lateLoggedAt).toLocaleString()}`
+                      : "";
+                    const marker = a ? (
+                      <span className={`grid-win t${a}`}>T{a}</span>
+                    ) : s ? (
+                      <span className={cx("grid-empty", k < today && "past")}>
+                        {k < today ? "·" : ""}
+                      </span>
+                    ) : (
+                      <span className="not-scheduled">—</span>
+                    );
+                    return (
+                      <td
+                        key={k}
+                        aria-label={`${t.name}, ${k}: ${a ? `T${a} completed` : s ? "Not completed" : "Not scheduled"}${lateLabel ? `. ${lateLabel}` : ""}`}
+                        title={[
+                          a
+                            ? `T${a} badge achieved`
+                            : !s
+                              ? "Not scheduled"
+                              : k > today
+                                ? "Coming up"
+                                : k === today
+                                  ? "A chance to show up"
+                                  : "A fresh start is always ahead",
+                          lateLabel,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      >
+                        {canCorrect ? (
+                          <button
+                            type="button"
+                            className="week-correction-button"
+                            aria-label={`Log completion for ${t.name} on ${k}`}
+                            onClick={() =>
+                              setCorrection({ taskId: t.id, day: k })
+                            }
+                          >
+                            {marker}
+                          </button>
+                        ) : (
+                          marker
+                        )}
+                        {p?.lateLoggedAt && (
+                          <span
+                            className="late-entry-label week-late-marker"
+                            aria-label={lateLabel}
+                            title={lateLabel}
+                          >
+                            •
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {!visibleTasks.length && (
           <Empty title="A week of possibilities">
             No scheduled habits in this week.
           </Empty>
         )}
-        <div className="legend">
-          <span>
-            <i className="legend-dot t1" />
-            T1 badge
-          </span>
-          <span>
-            <i className="legend-dot t2" />
-            T2 badge
-          </span>
-          <span>
-            <i className="legend-dot t3" />
-            T3 badge
-          </span>
-          <span>· A fresh start ahead</span>
-          <span>— Not scheduled</span>
-        </div>
       </div>
       {correction && app.tasks.find((t) => t.id === correction.taskId) && (
         <PastCompletionDialog
@@ -270,339 +325,15 @@ export function Week() {
       <div className="panel reflection-callout">
         <Sparkles />
         <div>
-          <h2>What made showing up easier?</h2>
-          <p>A quick reflection helps you make next week a little kinder.</p>
+          <h2>Weekly review</h2>
         </div>
-        <Link className="button secondary" to="/review">
-          Weekly review
+        <Link className="button secondary" to="/week/review">
+          Open review
           <ArrowRight size={17} />
         </Link>
       </div>
-    </>
+    </div>
   );
 }
-export function Analytics() {
-  const { tasks, progress } = useApp();
-  const [period, setPeriod] = useState(30);
-  const keys = useMemo(() => daysBack(period), [period, dateKey()]),
-    previousKeys = daysBack(
-      period,
-      new Date(parseDate(keys[0]).getTime() - 86400000),
-    ),
-    s = statistics(tasks, progress, keys),
-    previous = statistics(tasks, progress, previousKeys);
-  const consistency = tasks
-    .filter((t) => !t.deletedDay || keys.some((k) => scheduled(t, k)))
-    .map((t) => {
-      const expected = keys.filter(
-        (k) =>
-          scheduled(t, k) ||
-          progress.some(
-            (p) => p.taskId === t.id && p.date === k && p.scheduled,
-          ),
-      );
-      const count = expected.filter((k) =>
-        progress.some(
-          (p) => p.taskId === t.id && p.date === k && achieved(p) > 0,
-        ),
-      ).length;
-      return {
-        ...t,
-        percent: expected.length
-          ? Math.round((count / expected.length) * 100)
-          : 0,
-        count,
-        total: expected.length,
-      };
-    })
-    .filter((t) => t.total);
-  const heat = daysBack(84);
-  const eligible = keys.filter(
-    (k) => dayStatus(tasks, progress, k).total > 0,
-  ).length;
-  return (
-    <>
-      <PageTitle
-        eyebrow="ONLY COMPARE WITH YOUR PAST SELF"
-        title="Look how far you've come."
-      >
-        <select
-          aria-label="Progress period"
-          value={period}
-          onChange={(e) => setPeriod(Number(e.target.value))}
-        >
-          <option value={7}>Last 7 days</option>
-          <option value={30}>Last 30 days</option>
-          <option value={90}>Last 90 days</option>
-        </select>
-      </PageTitle>
-      <Stats
-        items={[
-          [s.daysWon, "Days Won"],
-          [s.tasksWon, "Habits achieved"],
-          [s.t3, "T3 badges"],
-        ]}
-      />
-      <div className="analytics-grid">
-        <section className="panel chart-panel">
-          <span className="eyebrow">THE PROMISE IS THE PROGRESS</span>
-          <h2>Days you won</h2>
-          <div className="ring-layout">
-            <div
-              className="progress-ring"
-              style={{
-                "--angle": `${eligible ? (s.daysWon / eligible) * 360 : 0}deg`,
-              }}
-            >
-              <div>
-                <strong>
-                  {eligible ? Math.round((s.daysWon / eligible) * 100) : 0}%
-                </strong>
-                <span>of scheduled days</span>
-              </div>
-            </div>
-            <div>
-              <h3>
-                {s.daysWon} of {eligible} days
-              </h3>
-              <p className="muted">
-                {s.daysWon === previous.daysWon
-                  ? "Your own pace. Your own progress."
-                  : `${Math.abs(s.daysWon - previous.daysWon)} ${s.daysWon > previous.daysWon ? "more" : "fewer"} days won than the previous ${period} days.`}
-              </p>
-              <small>
-                No scheduled habits? Rest days don't lower your rate.
-              </small>
-            </div>
-          </div>
-        </section>
-        <section className="panel chart-panel">
-          <span className="eyebrow">HIGHEST LEVEL PER TASK-DAY</span>
-          <h2>Your badges, by level</h2>
-          <div className="distribution">
-            {s.distribution.map((n, i) => (
-              <div key={i}>
-                <Tier level={i + 1} />
-                <div className="bar-track">
-                  <i
-                    className={`t${i + 1}`}
-                    style={{
-                      width: `${s.tasksWon ? (n / s.tasksWon) * 100 : 0}%`,
-                    }}
-                  />
-                </div>
-                <strong>{n}</strong>
-              </div>
-            ))}
-          </div>
-          <p className="muted">A T1 badge is already enough for today.</p>
-        </section>
-        <section className="panel chart-panel">
-          <span className="eyebrow">THE LAST 12 WEEKS</span>
-          <h2>Small steps leave a trail.</h2>
-          <div className="heatmap">
-            {heat.map((k) => {
-              const d = dayStatus(tasks, progress, k);
-              return (
-                <div
-                  key={k}
-                  tabIndex={0}
-                  title={`${parseDate(k).toLocaleDateString()}: ${d.won}/${d.total} habits achieved`}
-                  aria-label={`${k}: ${d.won} of ${d.total} habits achieved`}
-                  className={cx(
-                    "heat-cell",
-                    d.dayWon ? "heat-won" : d.won ? "heat-some" : "",
-                  )}
-                />
-              );
-            })}
-          </div>
-          <div className="legend">
-            <span>Less</span>
-            <i className="heat-cell" />
-            <i className="heat-cell heat-some" />
-            <i className="heat-cell heat-won" />
-            <span>More</span>
-          </div>
-        </section>
-        <section className="panel chart-panel">
-          <span className="eyebrow">SHOWING UP, YOUR WAY</span>
-          <h2>Habit consistency</h2>
-          {consistency.length ? (
-            consistency.map((t) => (
-              <div className="consistency" key={t.id}>
-                <CategoryIcon category={t.category} />
-                <div>
-                  <span>{t.name}</span>
-                  <div className="bar-track">
-                    <i style={{ width: `${t.percent}%` }} />
-                  </div>
-                </div>
-                <strong>{t.percent}%</strong>
-                <small>
-                  {t.count}/{t.total}
-                </small>
-              </div>
-            ))
-          ) : (
-            <p className="muted">
-              Your habit history will grow here. No need to rush.
-            </p>
-          )}
-        </section>
-      </div>
-    </>
-  );
-}
-export function WeeklyReview() {
-  const app = useApp(),
-    [offset, setOffset] = useState(0),
-    keys = weekDates(offset),
-    id = keys[0],
-    existing = app.weeklyReviews.find((r) => r.id === id),
-    [worked, setWorked] = useState(""),
-    [hard, setHard] = useState(""),
-    [next, setNext] = useState(""),
-    [saving, setSaving] = useState(false),
-    stats = statistics(app.tasks, app.progress, keys);
-  useEffect(() => {
-    setWorked(existing?.worked || "");
-    setHard(existing?.hard || "");
-    setNext(existing?.next || "");
-  }, [id, existing?.id]);
-  async function save(e) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await app.persist("weeklyReviews", id, {
-        weekStart: id,
-        worked,
-        hard,
-        next,
-      });
-      app.setNotice("Reflection saved. A little learning goes a long way.");
-    } catch {
-    } finally {
-      setSaving(false);
-    }
-  }
-  const suggestions = app.tasks
-    .filter((t) => !t.deletedDay && t.active !== false)
-    .filter((t) => {
-      const scheduledDays = keys.filter(
-        (k) => k <= dateKey() && scheduled(t, k),
-      );
-      return (
-        scheduledDays.length >= 3 &&
-        scheduledDays.filter((k) =>
-          app.progress.some(
-            (p) => p.taskId === t.id && p.date === k && achieved(p) > 0,
-          ),
-        ).length /
-          scheduledDays.length <
-          0.5
-      );
-    });
-  return (
-    <>
-      <PageTitle
-        back="/profile"
-        eyebrow="A PAUSE, NOT A PERFORMANCE REVIEW"
-        title="What did this week teach you?"
-      />
-      <div className="period-navigation">
-        <button
-          className="icon-button"
-          aria-label="Previous review week"
-          onClick={() => setOffset(offset - 1)}
-        >
-          <ChevronLeft />
-        </button>
-        <h3>
-          Week of{" "}
-          {parseDate(id).toLocaleDateString(undefined, {
-            month: "long",
-            day: "numeric",
-          })}
-        </h3>
-        <button
-          className="icon-button"
-          aria-label="Next review week"
-          disabled={offset >= 0}
-          onClick={() => setOffset(offset + 1)}
-        >
-          <ChevronRight />
-        </button>
-      </div>
-      <Stats
-        items={[
-          [stats.daysWon, "Days Won"],
-          [stats.tasksWon, "Habits achieved"],
-          [stats.t3, "T3 badges"],
-        ]}
-      />
-      <div className="detail-layout">
-        <form className="panel form-section" onSubmit={save}>
-          <label>
-            What worked?
-            <textarea
-              maxLength={2000}
-              value={worked}
-              onChange={(e) => setWorked(e.target.value)}
-              placeholder="What made showing up easier?"
-            />
-          </label>
-          <label>
-            What felt difficult?
-            <textarea
-              maxLength={2000}
-              value={hard}
-              onChange={(e) => setHard(e.target.value)}
-              placeholder="No judgment. Just noticing."
-            />
-          </label>
-          <label>
-            One kind adjustment for next week
-            <textarea
-              maxLength={2000}
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-              placeholder="Maybe a smaller T1, or a different schedule."
-            />
-          </label>
-          <button className="button" disabled={saving}>
-            {saving ? "Saving…" : "Save my reflection"}
-            <Check size={17} />
-          </button>
-        </form>
-        <section>
-          <div className="panel reminder-card">
-            <Sparkles size={26} />
-            <h2>
-              Make the minimum
-              <br />
-              <em>more possible.</em>
-            </h2>
-            <p>
-              If T1 keeps feeling hard, make it smaller. Recalibrating is a
-              skill, not a setback.
-            </p>
-          </div>
-          {suggestions.map((t) => (
-            <Link
-              key={t.id}
-              className="panel recalibrate"
-              to={`/tasks/${t.id}/edit`}
-            >
-              <span>
-                <h3>{t.name}</h3>
-                <p>Could a smaller T1 help next week?</p>
-              </span>
-              <Edit3 size={18} />
-            </Link>
-          ))}
-        </section>
-      </div>
-    </>
-  );
-}
+export { ProgressDashboard as Analytics } from "../ProgressDashboard";
+export { WeeklyReflection as WeeklyReview } from "../WeeklyReflection";

@@ -1,5 +1,7 @@
+import { FeedbackInbox } from "../FeedbackInbox";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { UsersTable } from "../UsersTable";
 import {
   collection,
   doc,
@@ -48,7 +50,7 @@ function useRows(path, enabled, owner) {
           key,
           rows: [],
           loading: false,
-          error: `Could not load ${path === "feedback" ? "feedback" : "users or roles"}: ${e.message}`,
+          error: `Could not load ${path === "feedback" ? "feedback" : path === "templates" ? "templates" : "users or roles"}: ${e.message}`,
         }),
     );
   }, [path, enabled, owner, key]);
@@ -63,17 +65,25 @@ function timeLabel(value) {
 export function UsersPage() {
   const { user, online, setNotice } = useApp();
   const { isStaff, isSuperAdmin } = useAccess();
-  const users = useRows("users", isStaff, null);
-  const roles = useRows("userRoles", isStaff, null);
-  const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState(null);
-  const [error, setError] = useState("");
-  const roleById = Object.fromEntries(roles.rows.map((r) => [r.id, r.role]));
+  const users = useRows("users", isStaff, null),
+    roles = useRows("userRoles", isStaff, null);
+  const templates = useRows("templates", isStaff, null);
+  const [busy, setBusy] = useState(null),
+    [error, setError] = useState("");
   async function changeRole(uid, next) {
-    if (!isSuperAdmin || busy || !online || uid === user.uid) return;
+    if (
+      !isSuperAdmin ||
+      busy ||
+      !online ||
+      roles.loading ||
+      roles.error ||
+      uid === user?.uid ||
+      !Object.hasOwn(ROLE_LABELS, next)
+    )
+      return;
     if (
       !window.confirm(
-        `Change this user's role to ${ROLE_LABELS[next]}?${next === "user" ? " This removes their admin access." : ""}`,
+        `Change this user's role to ${ROLE_LABELS[next]}?${next === "user" ? " This removes admin access." : ""}`,
       )
     )
       return;
@@ -87,105 +97,48 @@ export function UsersPage() {
           updatedBy: user.uid,
           updatedAt: serverTimestamp(),
         });
-      setNotice("User role updated.");
+      setNotice("Role updated.");
     } catch (e) {
       setError(`Role was not changed: ${e.message}`);
     } finally {
       setBusy(null);
     }
   }
-  const filtered = users.rows
-    .filter((row) =>
-      `${row.displayName} ${row.email || ""} ${row.id}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-    )
-    .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
   return (
-    <>
-      <PageTitle
-        back="/profile"
-        eyebrow="ADMINISTRATION"
-        title="Users & roles."
+    <div className="admin-page users-page">
+      <PageTitle eyebrow="ADMINISTRATION" title="Users" />
+      <p className="users-intro">
+        A clear view of your community. Manage people and their permissions in
+        one place.
+      </p>
+      {(error || users.error || roles.error) && (
+        <p className="banner error" role="alert">
+          {error || users.error || roles.error}
+        </p>
+      )}
+      {templates.error && (
+        <p className="banner error" role="alert">
+          Template counts could not be loaded. Counts are unavailable, not zero.
+        </p>
+      )}
+      {!online && (
+        <p className="banner" role="status">
+          You're offline. Role changes are paused; displayed data may be out of
+          date.
+        </p>
+      )}
+      <UsersTable
+        users={users}
+        roles={roles}
+        templates={templates}
+        currentUserId={user?.uid}
+        isSuperAdmin={isSuperAdmin}
+        online={online}
+        busy={busy}
+        onChangeRole={changeRole}
+        setNotice={setNotice}
       />
-      <div className="panel form-section">
-        <p>
-          {isSuperAdmin
-            ? "Give or remove Admin and Super admin roles. Select User to remove elevated access."
-            : "View registered app users and their roles. Only a super admin can change roles."}
-        </p>
-        <p className="muted">
-          Your own role cannot be changed here. Private habits and progress
-          remain private.
-        </p>
-        <label>
-          Search users
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Name, email or user ID"
-          />
-        </label>
-        {(error || users.error || roles.error) && (
-          <p className="banner error" role="alert">
-            {error || users.error || roles.error}
-          </p>
-        )}
-        {!online && <p role="status">Reconnect to change roles.</p>}
-        {users.loading || roles.loading ? (
-          <p role="status">Loading users…</p>
-        ) : (
-          <>
-            <p className="muted">
-              {filtered.length} of {users.rows.length} users
-            </p>
-            <div className="admin-users">
-              {filtered.map((row) => (
-                <article className="admin-user" key={row.id}>
-                  <div className="admin-user-copy">
-                    <h3>
-                      {row.displayName || "App user"}
-                      {row.id === user.uid ? " (you)" : ""}
-                    </h3>
-                    {row.email && <p>{row.email}</p>}
-                    <small className="muted">{row.id}</small>
-                  </div>
-                  {isSuperAdmin ? (
-                    <label className="admin-role">
-                      Role
-                      <select
-                        aria-label={`Role for ${row.displayName || row.id}`}
-                        value={roleById[row.id] || "user"}
-                        disabled={
-                          !!busy ||
-                          !online ||
-                          row.id === user.uid ||
-                          !!roles.error
-                        }
-                        onChange={(e) => changeRole(row.id, e.target.value)}
-                      >
-                        {Object.entries(ROLE_LABELS).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                      {busy === row.id && <small role="status">Saving…</small>}
-                    </label>
-                  ) : (
-                    <span className="role-badge">
-                      {ROLE_LABELS[roleById[row.id]] || "User"}
-                    </span>
-                  )}
-                </article>
-              ))}
-              {!filtered.length && !users.error && <p>No users found.</p>}
-            </div>
-          </>
-        )}
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -196,7 +149,7 @@ function FeedbackCard({ item, staff, onStatus, busy }) {
         <span className="eyebrow">
           {item.type === "report" ? "Problem report" : "Suggestion"}
         </span>
-        <span className="role-badge">
+        <span className={`role-badge feedback-badge ${item.status || "open"}`}>
           {item.status === "in_progress"
             ? "In progress"
             : item.status === "resolved"
@@ -229,7 +182,11 @@ function FeedbackCard({ item, staff, onStatus, busy }) {
   );
 }
 
-export function FeedbackPage({ inbox = false }) {
+export function FeedbackPage({
+  inbox = false,
+  embedded = false,
+  view = "all",
+}) {
   const app = useApp();
   const { isStaff } = useAccess();
   const rows = useRows(
@@ -241,6 +198,7 @@ export function FeedbackPage({ inbox = false }) {
   const [filter, setFilter] = useState("all");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
   async function submit(e) {
     e.preventDefault();
     if (busy || !app.user || !app.online) return;
@@ -264,6 +222,7 @@ export function FeedbackPage({ inbox = false }) {
         updatedAt: serverTimestamp(),
       });
       setForm({ type: "report", title: "", message: "" });
+      setSent(true);
       app.setNotice(
         "Thank you. Your feedback has been sent to the admin team.",
       );
@@ -274,7 +233,14 @@ export function FeedbackPage({ inbox = false }) {
     }
   }
   async function changeStatus(id, status) {
-    if (busy || !app.online) return;
+    if (
+      busy ||
+      !app.online ||
+      !isStaff ||
+      !inbox ||
+      !["open", "in_progress", "resolved"].includes(status)
+    )
+      return;
     setBusy(true);
     setError("");
     try {
@@ -297,12 +263,20 @@ export function FeedbackPage({ inbox = false }) {
         (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0),
     );
   return (
-    <>
-      <PageTitle
-        back="/profile"
-        eyebrow={inbox ? "ADMINISTRATION" : "HELP US IMPROVE"}
-        title={inbox ? "Reports & suggestions." : "Report or suggest."}
-      />
+    <div className={`feedback-page${inbox ? " feedback-inbox-page" : ""}`}>
+      {!embedded && (
+        <>
+          <PageTitle
+            eyebrow={inbox ? "ADMINISTRATION" : "HELP US IMPROVE"}
+            title={inbox ? "Reports & suggestions." : "Report or suggest."}
+          />
+          <p className="feedback-intro">
+            {inbox
+              ? "Review community feedback and keep people updated."
+              : "Something not working? Have an idea? Let us know."}
+          </p>
+        </>
+      )}
       {!app.user ? (
         <section className="panel form-section">
           <h2>We'd love to hear from you.</h2>
@@ -315,68 +289,15 @@ export function FeedbackPage({ inbox = false }) {
         </section>
       ) : (
         <>
-          {isStaff && (
-            <p>
+          {isStaff && !embedded && (
+            <p className="feedback-admin-link">
               <Link
                 className="text-button"
-                to={inbox ? "/feedback" : "/admin/feedback"}
+                to={inbox ? "/help?section=feedback" : "/admin/feedback"}
               >
                 {inbox ? "Send your own feedback" : "Open admin inbox"}
               </Link>
             </p>
-          )}
-          {!inbox && (
-            <form
-              className="panel form-section feedback-form"
-              onSubmit={submit}
-            >
-              <h2>A problem or a possibility?</h2>
-              <p>
-                Only you, admins and super admins can read your submission.
-                Please do not include passwords or sensitive personal
-                information.
-              </p>
-              <label>
-                Type
-                <select
-                  aria-label="Feedback type"
-                  disabled={busy}
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value })}
-                >
-                  <option value="report">Report a problem</option>
-                  <option value="suggestion">Suggest an improvement</option>
-                </select>
-              </label>
-              <label>
-                Title
-                <input
-                  required
-                  maxLength={120}
-                  disabled={busy}
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="A short summary"
-                />
-              </label>
-              <label>
-                Details
-                <textarea
-                  required
-                  maxLength={5000}
-                  disabled={busy}
-                  rows={6}
-                  value={form.message}
-                  onChange={(e) =>
-                    setForm({ ...form, message: e.target.value })
-                  }
-                  placeholder="What happened, or what would you like us to improve?"
-                />
-              </label>
-              <button className="button" disabled={busy || !app.online}>
-                {busy ? "Sending…" : "Send feedback"}
-              </button>
-            </form>
           )}
           {!app.online && (
             <p role="status">Reconnect to send feedback or change a status.</p>
@@ -386,46 +307,142 @@ export function FeedbackPage({ inbox = false }) {
               {error || rows.error}
             </p>
           )}
-          <div className="section-heading">
-            <h2>{inbox ? "Admin inbox" : "Your submissions"}</h2>
-            <label>
-              Filter status
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              >
-                <option value="all">All statuses</option>
-                <option value="open">Open</option>
-                <option value="in_progress">In progress</option>
-                <option value="resolved">Resolved</option>
-              </select>
-            </label>
-          </div>
-          {rows.loading ? (
-            <p role="status">Loading feedback…</p>
-          ) : sorted.length ? (
-            <div className="feedback-list">
-              {sorted.map((item) => (
-                <FeedbackCard
-                  key={item.id}
-                  item={item}
-                  staff={inbox}
-                  onStatus={changeStatus}
-                  busy={busy || !app.online}
-                />
-              ))}
-            </div>
-          ) : (
-            !rows.error && (
-              <p className="panel form-section">
-                {inbox
-                  ? "No feedback matches this filter."
-                  : "No submissions yet. Send a report or suggestion above."}
-              </p>
-            )
+          {embedded && view === "compose" && sent && (
+            <p className="support-sent-note" role="status">
+              Feedback sent.{" "}
+              <Link to="/help?section=submissions">
+                View your submissions and status
+              </Link>
+            </p>
           )}
+          <div
+            className={
+              inbox
+                ? "feedback-inbox-content"
+                : `feedback-personal-layout${embedded ? " feedback-embedded-layout" : ""}`
+            }
+          >
+            {!inbox && view !== "history" && (
+              <form
+                className="panel form-section feedback-form"
+                onSubmit={submit}
+              >
+                <h2>
+                  {form.type === "report"
+                    ? "Report a problem"
+                    : "Suggest an improvement"}
+                </h2>
+                <p className="feedback-privacy">
+                  {form.type === "report"
+                    ? "Tell us what happened and how to reproduce it."
+                    : "Describe your idea and how it would help you."}{" "}
+                  Private to you and the admin team. Don’t include sensitive
+                  information.
+                </p>
+                <label className="feedback-type-field">
+                  Type
+                  <select
+                    aria-label="Feedback type"
+                    disabled={busy}
+                    value={form.type}
+                    onChange={(e) => setForm({ ...form, type: e.target.value })}
+                  >
+                    <option value="report">Report a problem</option>
+                    <option value="suggestion">Suggest an improvement</option>
+                  </select>
+                </label>
+                <label className="feedback-title-field">
+                  Title
+                  <input
+                    required
+                    maxLength={120}
+                    disabled={busy}
+                    value={form.title}
+                    onChange={(e) =>
+                      setForm({ ...form, title: e.target.value })
+                    }
+                    placeholder="A short summary"
+                  />
+                </label>
+                <label className="feedback-details-field">
+                  Details
+                  <textarea
+                    required
+                    maxLength={5000}
+                    disabled={busy}
+                    rows={5}
+                    value={form.message}
+                    onChange={(e) =>
+                      setForm({ ...form, message: e.target.value })
+                    }
+                    placeholder={
+                      form.type === "report"
+                        ? "Which page? What did you do? What happened instead? Include the error and device/browser if relevant."
+                        : "What would you like to change? How would it make your routine easier?"
+                    }
+                  />
+                </label>
+                <button className="button" disabled={busy || !app.online}>
+                  {busy ? "Sending…" : "Send feedback"}
+                </button>
+              </form>
+            )}
+            {inbox ? (
+              <FeedbackInbox
+                data={rows}
+                busy={busy || !app.online || !isStaff}
+                onStatus={changeStatus}
+              />
+            ) : view !== "compose" ? (
+              <section
+                className="panel feedback-history"
+                aria-label="Your submissions"
+              >
+                <div className="section-heading feedback-submissions-heading">
+                  <h2>{inbox ? "Admin inbox" : "Your submissions"}</h2>
+                  <label>
+                    Filter status
+                    <select
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                    >
+                      <option value="all">All statuses</option>
+                      <option value="open">Open</option>
+                      <option value="in_progress">In progress</option>
+                      <option value="resolved">Resolved</option>
+                    </select>
+                  </label>
+                </div>
+                {rows.loading ? (
+                  <p role="status">Loading feedback…</p>
+                ) : sorted.length ? (
+                  <div className="feedback-list">
+                    {sorted.map((item) => (
+                      <FeedbackCard
+                        key={item.id}
+                        item={item}
+                        staff={inbox}
+                        onStatus={changeStatus}
+                        busy={busy || !app.online}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  !rows.error && (
+                    <p className="panel feedback-empty">
+                      {inbox
+                        ? "No feedback matches this filter."
+                        : filter !== "all"
+                          ? "No submissions match this status."
+                          : "No submissions yet. Send a report or suggestion to get started."}
+                    </p>
+                  )
+                )}
+              </section>
+            ) : null}
+          </div>
         </>
       )}
-    </>
+    </div>
   );
 }

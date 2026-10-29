@@ -67,7 +67,7 @@ const order = () =>
     .locator("[data-habit-id]")
     .evaluateAll((rows) => rows.map((r) => r.dataset.habitId));
 const expectOrder = (ids) => expect.poll(order).toEqual(ids);
-await page.goto("http://127.0.0.1:4173/profile");
+await page.goto("http://127.0.0.1:4173/habits");
 await expectOrder(["alpha", "beta", "gamma", "delta"]);
 await page.getByRole("button", { name: "Move Delta up", exact: true }).click();
 await expectOrder(["alpha", "beta", "delta", "gamma"]);
@@ -196,10 +196,12 @@ await expect
 // Editing an existing habit must preserve its rank.
 await page.goto("http://127.0.0.1:4173/tasks/beta/edit");
 await page
-  .getByRole("checkbox", { name: "T2 and T3 are additional amounts" })
+  .getByRole("checkbox", {
+    name: "T1 is manageable. T2 and T3 add extra tasks.",
+  })
   .check();
 await page.getByRole("button", { name: "Save habit", exact: true }).click();
-await page.goto("http://127.0.0.1:4173/profile");
+await page.goto("http://127.0.0.1:4173/habits");
 await expectOrder(["gamma", "delta", "beta", "alpha"]);
 // The normal pointer area still permits scrolling; touch-action:none is grip-only.
 assert.equal(

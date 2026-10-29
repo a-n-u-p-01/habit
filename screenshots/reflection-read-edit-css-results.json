@@ -1,0 +1,149 @@
+{
+  "scope": "Isolated Chromium CSS fixture with representative read/edit markup, not full React mode transitions",
+  "results": [
+    {
+      "mode": "read",
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "read",
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "read",
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "read",
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "read",
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "read",
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "read",
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "read",
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "read",
+      "width": 1024,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "read",
+      "width": 1024,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "read",
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "read",
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 1024,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 1024,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "edit",
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    }
+  ]
+}
