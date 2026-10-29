@@ -500,12 +500,14 @@ export function AppProvider({ children }) {
   }
   async function removeLegacyCache() {
     if (!online) {
-      setError("Reconnect and sync before removing any older offline cache.");
+      setError(
+        "Reconnect before removing the older offline cache. Pending saves finish automatically when connected.",
+      );
       return;
     }
     if (
       !window.confirm(
-        "Remove the older offline cloud cache from this browser? Any unsynced work left by an older app version will be lost. Sync and close older app tabs first. Device-only guest data is not removed. This cannot be undone.",
+        "Remove the older offline cloud cache from this browser? Any unsynced work left by an older app version will be lost. Keep older app tabs open until their pending changes finish saving, then close them first. Device-only guest data is not removed. This cannot be undone.",
       )
     )
       return;
@@ -515,7 +517,7 @@ export function AppProvider({ children }) {
       await clearIndexedDbPersistence(db);
     } catch {
       window.alert(
-        "The old cache was not removed. Close other app tabs and retry after syncing their changes.",
+        "The old cache was not removed. Let pending changes finish saving in the other app tabs, then close those tabs and try again.",
       );
     } finally {
       window.location.reload();
@@ -525,7 +527,7 @@ export function AppProvider({ children }) {
     try {
       if (pending && !online)
         throw new Error(
-          "Reconnect and let your pending changes sync before signing out.",
+          "You have unsaved cloud changes. Reconnect so they can save automatically before you sign out.",
         );
       if (online) await waitForPendingWrites(db);
       await signOut(auth);
@@ -788,14 +790,37 @@ export function AppProvider({ children }) {
       published: true,
       updatedAt: Date.now(),
     });
-    await setDoc(ref, encodeFirestore(value));
-    await persist("templates", template.id, { ...template, published: true });
+    const batch = writeBatch(db);
+    batch.set(ref, encodeFirestore(value));
+    batch.set(
+      doc(db, "users", user.uid, "templates", template.id),
+      {
+        ...encodeFirestore(
+          clean({ ...template, id: template.id, published: true }),
+        ),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    await batch.commit();
     setNotice("Your template is now public.");
   }
   async function unpublish(template) {
-    if (!user) return;
-    await deleteDoc(doc(db, "templates", template.id));
-    await persist("templates", template.id, { ...template, published: false });
+    if (!user) throw Error("Sign in to unpublish a template.");
+    if (!online) throw Error("Reconnect to unpublish.");
+    const batch = writeBatch(db);
+    batch.delete(doc(db, "templates", template.id));
+    batch.set(
+      doc(db, "users", user.uid, "templates", template.id),
+      {
+        ...encodeFirestore(
+          clean({ ...template, id: template.id, published: false }),
+        ),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    await batch.commit();
     setNotice(
       "Template unpublished. Existing copies remain with their owners.",
     );

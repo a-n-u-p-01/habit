@@ -1,3 +1,4 @@
+import { AppLoading } from "./LoadingStates";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
@@ -65,7 +66,7 @@ export const useAccess = () => useContext(AccessContext);
 export function StaffOnly({ children }) {
   const { user, login } = useApp();
   const access = useAccess();
-  if (!access.ready) return <p role="status">Checking permissions…</p>;
+  if (!access.ready) return <AppLoading />;
   if (!user)
     return (
       <section className="panel form-section">

@@ -35,7 +35,7 @@ async function fillManual() {
     .check();
 }
 try {
-  await page.goto("http://127.0.0.1:4173/tasks/new");
+  await page.goto("http://127.0.0.1:4173/habits/new");
   await expect(
     page.getByRole("heading", { name: "Start a new habit.", exact: true }),
   ).toBeVisible();
@@ -44,7 +44,7 @@ try {
   ).toHaveAttribute("href", "/templates");
   await expect(
     page.getByRole("link", { name: "Create manually", exact: true }),
-  ).toHaveAttribute("href", "/tasks/new/manual");
+  ).toHaveAttribute("href", "/habits/new/manual");
   mkdirSync("screenshots", { recursive: true });
   await page.screenshot({
     path: "screenshots/habit-create-choice.png",
@@ -133,7 +133,7 @@ try {
   );
   assert.deepEqual(stored.templates[0], template);
   assert.notEqual(stored.tasks[1].levels[0][0].id, template.levels[0][0].id);
-  await page.goto("http://127.0.0.1:4173/tasks/new");
+  await page.goto("http://127.0.0.1:4173/habits/new");
   await page.getByRole("link", { name: "Use a template", exact: true }).click();
   const starter = page.locator(".template-card").filter({
     has: page.getByRole("heading", { name: "A little reading", exact: true }),

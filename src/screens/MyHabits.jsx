@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, HelpCircle } from "lucide-react";
 import { useApp } from "../store";
 import { dateKey } from "../domain";
 import { PageTitle, Empty } from "../components";
@@ -51,24 +51,40 @@ export function MyHabits() {
   }
   return (
     <div className="my-habits-page">
-      <PageTitle eyebrow="MAKE YOUR ROUTINE WORK FOR YOU" title="My habits.">
-        <Link className="button" to="/tasks/new">
+      <PageTitle title="My habits.">
+        <Link className="button" to="/habits/new">
           <Plus size={18} /> New habit
         </Link>
       </PageTitle>
-      <p className="my-habits-intro">
-        Arrange, edit or pause your habits. Your past progress stays with you.
-      </p>
-      <div className="my-habits-counts" aria-label="Habit counts">
-        <span>
-          <strong>{habits.length - paused}</strong> active
-        </span>
-        <span>
-          <strong>{paused}</strong> paused
-        </span>
-        <span>
-          <strong>{habits.length}</strong> total
-        </span>
+      <div className="my-habits-toolbar">
+        <div className="my-habits-counts" aria-label="Habit counts">
+          <span>
+            <strong>{habits.length - paused}</strong> active
+          </span>
+          <span>
+            <strong>{paused}</strong> paused
+          </span>
+          <span>
+            <strong>{habits.length}</strong> total
+          </span>
+        </div>
+        <details className="habit-controls-help">
+          <summary aria-label="Habit controls help" title="Habit controls help">
+            <HelpCircle size={18} />
+          </summary>
+          <div className="habit-help-popover">
+            <strong>Habit controls</strong>
+            <p>Drag the grip or use the arrows to reorder.</p>
+            <p>
+              Pause keeps the habit and its history. Edit changes its setup.
+            </p>
+            <p>
+              Keyboard: focus the grip, press Space, use arrow keys, then Space
+              to drop.
+            </p>
+            <Link to="/help">Open help & feedback</Link>
+          </div>
+        </details>
       </div>
       {habits.length ? (
         <HabitOrderList habits={habits} onPause={toggle} onRemove={remove} />
@@ -76,7 +92,7 @@ export function MyHabits() {
         <Empty
           title="Your routine starts small"
           action={
-            <Link className="button" to="/tasks/new">
+            <Link className="button" to="/habits/new">
               Create your first habit <Plus size={17} />
             </Link>
           }

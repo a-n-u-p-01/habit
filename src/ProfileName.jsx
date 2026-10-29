@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Mountain, Shield } from "lucide-react";
 import { useApp } from "./store";
 
-export function ProfileNameForm({ setup = false }) {
+export function ProfileNameForm({ setup = false, compact = false }) {
   const app = useApp();
   const [name, setName] = useState(setup ? "" : app.user?.displayName || "");
   const [busy, setBusy] = useState(false);
@@ -29,7 +29,10 @@ export function ProfileNameForm({ setup = false }) {
     }
   }
   return (
-    <form className="profile-name-form" onSubmit={submit}>
+    <form
+      className={`profile-name-form${compact ? " compact-name-form" : ""}`}
+      onSubmit={submit}
+    >
       <label>
         Your app name
         <input
@@ -44,16 +47,24 @@ export function ProfileNameForm({ setup = false }) {
           placeholder="Choose a nickname"
         />
       </label>
-      <p className="muted">
-        Use a nickname, not your full name or email. It appears in greetings,
-        your profile and content you choose to share. This does not change your
-        Google account.
-      </p>
-      {!setup && (
+      {compact ? (
         <p className="muted">
-          Changing it also updates your authored templates, reviews and reports.
-          Other people's saved copies may retain an older name.
+          This name appears on templates and reviews you share.
         </p>
+      ) : (
+        <>
+          <p className="muted">
+            Use a nickname, not your full name or email. It appears in
+            greetings, your profile and content you choose to share. This does
+            not change your Google account.
+          </p>
+          {!setup && (
+            <p className="muted">
+              Changing it also updates your authored templates, reviews and
+              reports. Other people's saved copies may retain an older name.
+            </p>
+          )}
+        </>
       )}
       {error && (
         <p className="inline-error" role="alert">

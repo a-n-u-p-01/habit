@@ -97,7 +97,7 @@ export function NewHabit() {
   return (
     <>
       <PageTitle
-        back="/"
+        back="/habits"
         eyebrow="ONE SMALL BEGINNING"
         title="Start a new habit."
       />
@@ -123,7 +123,7 @@ export function NewHabit() {
         <Link
           className="panel habit-start-option"
           aria-label="Create manually"
-          to="/tasks/new/manual"
+          to="/habits/new/manual"
         >
           <Edit3 size={28} />
           <h2>Create manually</h2>
@@ -288,7 +288,7 @@ export function TaskEditor({ templateMode = false }) {
             ? "/templates"
             : id
               ? "/habits"
-              : "/tasks/new"
+              : "/habits/new"
         }
         eyebrow={templateMode ? "YOUR OWN BLUEPRINT" : "MAKE IT ACHIEVABLE"}
         title={`${id ? "Edit" : source ? "Customize" : "Create"} ${templateMode ? "template" : "habit"}`}

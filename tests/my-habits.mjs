@@ -95,7 +95,7 @@ try {
   await expect(page.locator(".my-habits-counts")).toContainText("1 paused");
   await expect(
     page.getByRole("link", { name: "New habit", exact: true }),
-  ).toHaveAttribute("href", "/tasks/new");
+  ).toHaveAttribute("href", "/habits/new");
   await row("manage-0")
     .getByRole("button", { name: "Pause", exact: true })
     .click();

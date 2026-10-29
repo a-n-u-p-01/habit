@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from "react";
+import { X, CalendarDays } from "lucide-react";
 import { useApp } from "./store";
 import { achieved, parseDate } from "./domain";
 import { pastEntryInfo } from "./history";
@@ -9,6 +10,7 @@ export function PastCompletionDialog({ task, day, progress, onClose }) {
   const dialog = useRef(null),
     locked = useRef(false);
   const titleId = useId();
+  const descriptionId = useId();
   const [target, setTarget] = useState(Math.min(3, achieved(progress) + 1));
   const [confirmed, setConfirmed] = useState(false);
   const [requirementsConfirmed, setRequirementsConfirmed] = useState(false);
@@ -20,6 +22,12 @@ export function PastCompletionDialog({ task, day, progress, onClose }) {
     weekday: "long",
     year: "numeric",
     month: "long",
+    day: "numeric",
+  });
+  const shortDateLabel = parseDate(day).toLocaleDateString(undefined, {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
     day: "numeric",
   });
   useEffect(() => {
@@ -59,113 +67,130 @@ export function PastCompletionDialog({ task, day, progress, onClose }) {
       ref={dialog}
       className="past-completion-dialog"
       aria-labelledby={titleId}
+      aria-describedby={descriptionId}
       onCancel={(event) => {
         event.preventDefault();
         if (!busy) close();
       }}
     >
       <form onSubmit={submit}>
-        <span className="eyebrow">LOG A COMPLETED HABIT</span>
-        <h2 id={titleId}>{info.snapshot?.name || task.name}</h2>
-        <p className="past-entry-date">{dateLabel}</p>
-        {!info.eligible ? (
-          <p role="alert">{info.reason}</p>
-        ) : (
-          <>
-            <p>
-              Only record work you actually completed on this date. Today's
-              progress will not change.
-            </p>
-            {info.needsRequirementsConfirmation && (
-              <p className="banner">
-                No original requirements were saved for this date. The current
-                requirements are shown below; review them carefully.
-              </p>
-            )}
-            <label>
-              Highest tier completed
-              <select
-                aria-label="Highest tier completed"
-                value={target}
-                disabled={busy}
-                onChange={(e) => {
-                  setTarget(Number(e.target.value));
-                  setConfirmed(false);
-                  setRequirementsConfirmed(false);
-                }}
-              >
-                {[1, 2, 3]
-                  .filter((level) => level > achieved(progress))
-                  .map((level) => (
-                    <option key={level} value={level}>
-                      T{level}
-                      {level === 1
-                        ? " — Minimum"
-                        : level === 2
-                          ? " — Minimum + T2 extras"
-                          : " — Minimum + T2 + T3 extras"}
-                    </option>
-                  ))}
-              </select>
-            </label>
-            <div className="past-entry-requirements">
-              {info.snapshot.levels.slice(0, target).map((rows, index) => (
-                <section key={index}>
-                  <h3>
-                    <Tier level={index + 1} />{" "}
-                    {index === 0 ? "Minimum" : "Additional effort"}
-                  </h3>
-                  <ul>
-                    {rows.map((r) => (
-                      <li key={r.id}>
-                        <RequirementText r={r} additional={index > 0} />
-                      </li>
+        <header className="past-dialog-header">
+          <div>
+            <span className="past-dialog-caption">PAST COMPLETION</span>
+            <h2 id={titleId}>{info.snapshot?.name || task.name}</h2>
+          </div>
+          <button
+            type="button"
+            className="past-dialog-close"
+            aria-label="Close dialog"
+            title="Close"
+            disabled={busy}
+            onClick={close}
+          >
+            <X size={18} />
+          </button>
+          <p className="past-entry-date">
+            <CalendarDays size={14} />
+            {shortDateLabel}
+          </p>
+          <p className="past-dialog-description" id={descriptionId}>
+            Today stays unchanged. Existing wins are kept.
+          </p>
+        </header>
+        <div className="past-dialog-body">
+          {!info.eligible ? (
+            <p role="alert">{info.reason}</p>
+          ) : (
+            <>
+              {info.needsRequirementsConfirmation && (
+                <p className="banner past-requirements-warning">
+                  Original tasks weren’t saved for this date. These are the
+                  current tasks—confirm they match before saving.
+                </p>
+              )}
+              <label className="past-tier-picker">
+                Highest tier completed
+                <select
+                  aria-label="Highest tier completed"
+                  value={target}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setTarget(Number(event.target.value));
+                    setConfirmed(false);
+                    setRequirementsConfirmed(false);
+                  }}
+                >
+                  {[1, 2, 3]
+                    .filter((level) => level > achieved(progress))
+                    .map((level) => (
+                      <option key={level} value={level}>
+                        T{level}
+                        {level === 1
+                          ? " — Minimum"
+                          : level === 2
+                            ? " — T1 + T2"
+                            : " — All tiers"}
+                      </option>
                     ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-            {info.needsRequirementsConfirmation && (
-              <label className="confirm-row">
+                </select>
+              </label>
+              <div className="past-entry-requirements">
+                {info.snapshot.levels.slice(0, target).map((rows, index) => (
+                  <section key={index}>
+                    <h3>
+                      <Tier level={index + 1} />
+                      {index === 0 ? "Minimum tasks" : "Extra tasks"}
+                    </h3>
+                    <ul>
+                      {rows.map((row) => (
+                        <li key={row.id}>
+                          <RequirementText r={row} additional={index > 0} />
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+              {info.needsRequirementsConfirmation && (
+                <label className="confirm-row past-confirmation">
+                  <input
+                    type="checkbox"
+                    disabled={busy}
+                    checked={requirementsConfirmed}
+                    onChange={(event) =>
+                      setRequirementsConfirmed(event.target.checked)
+                    }
+                  />
+                  <span>
+                    These requirements match what this habit required on{" "}
+                    {dateLabel}.
+                  </span>
+                </label>
+              )}
+              <label className="confirm-row past-confirmation">
                 <input
                   type="checkbox"
+                  aria-label={`I completed all the requirements shown on ${dateLabel}.`}
                   disabled={busy}
-                  checked={requirementsConfirmed}
-                  onChange={(e) => setRequirementsConfirmed(e.target.checked)}
+                  checked={confirmed}
+                  onChange={(event) => setConfirmed(event.target.checked)}
                 />
-                <span>
-                  These requirements match what this habit required on{" "}
-                  {dateLabel}.
-                </span>
+                <span>I completed these tasks on {shortDateLabel}.</span>
               </label>
-            )}
-            <label className="confirm-row">
-              <input
-                type="checkbox"
-                disabled={busy}
-                checked={confirmed}
-                onChange={(e) => setConfirmed(e.target.checked)}
-              />
-              <span>
-                I completed all the requirements shown on {dateLabel}.
-              </span>
-            </label>
-            <p className="muted">
-              Saved as Logged later. Existing wins will not be removed.
+            </>
+          )}
+          {app.user && !app.online && (
+            <p className="past-dialog-message" role="status">
+              Reconnect to save this entry to your account.
             </p>
-          </>
-        )}
-        {app.user && !app.online && (
-          <p role="status">
-            Reconnect to save a correction to your cloud account.
-          </p>
-        )}
-        {error && (
-          <p className="inline-error" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="past-entry-actions">
+          )}
+          {error && (
+            <p className="inline-error" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+        <footer className="past-entry-actions">
           <button
             type="button"
             className="button secondary"
@@ -177,6 +202,7 @@ export function PastCompletionDialog({ task, day, progress, onClose }) {
           {info.eligible && (
             <button
               className="button"
+              aria-label="Save past completion"
               disabled={
                 busy ||
                 !confirmed ||
@@ -185,10 +211,10 @@ export function PastCompletionDialog({ task, day, progress, onClose }) {
                 (!!app.user && !app.online)
               }
             >
-              {busy ? "Saving…" : "Save past completion"}
+              {busy ? "Saving…" : "Save completion"}
             </button>
           )}
-        </div>
+        </footer>
       </form>
     </dialog>
   );

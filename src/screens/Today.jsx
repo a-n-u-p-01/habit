@@ -60,7 +60,7 @@ export function Today() {
           <Link to="/week">
             <Calendar size={16} /> This week
           </Link>
-          <Link to="/tasks/new">
+          <Link to="/habits/new">
             <Plus size={16} /> New habit
           </Link>
           <Link to="/templates">
@@ -175,7 +175,7 @@ export function Today() {
                     View your week <ArrowRight size={17} />
                   </Link>
                 ) : (
-                  <Link className="button" to="/tasks/new">
+                  <Link className="button" to="/habits/new">
                     Create your first habit <Plus size={17} />
                   </Link>
                 )

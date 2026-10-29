@@ -1,0 +1,77 @@
+{
+  "scope": "Isolated native dialog with real project CSS and representative long content; not full React save workflow",
+  "results": [
+    {
+      "width": 280,
+      "height": 640,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 280,
+      "height": 640,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 760,
+      "height": 600,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 760,
+      "height": 600,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "theme": "light",
+      "passed": true
+    }
+  ]
+}

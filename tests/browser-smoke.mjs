@@ -39,7 +39,7 @@ await expect(
   page
     .getByRole("navigation", { name: "Habit shortcuts" })
     .getByRole("link", { name: "New habit", exact: true }),
-).toHaveAttribute("href", "/tasks/new");
+).toHaveAttribute("href", "/habits/new");
 await expect(
   page
     .getByRole("navigation", { name: "Habit shortcuts" })
@@ -158,7 +158,7 @@ await expect(card.locator(".tier")).toHaveText("T3");
 const taskId = await page.evaluate(
   () => JSON.parse(localStorage.getItem("win-guest-v1")).tasks[0].id,
 );
-await page.goto(`http://127.0.0.1:4173/task/${taskId}`);
+await page.goto(`http://127.0.0.1:4173/habits/${taskId}`);
 await page.getByText("Do 10 push-ups", { exact: true }).first().waitFor();
 await page.reload();
 await page.getByText("Do 10 push-ups", { exact: true }).first().waitFor();
@@ -178,13 +178,9 @@ await page.screenshot({
   fullPage: true,
 });
 await page.goto("http://127.0.0.1:4173/week");
-await page
-  .getByRole("heading", { name: "Your week, in small wins." })
-  .waitFor();
+await page.getByRole("heading", { name: "This week" }).waitFor();
 await page.goto("http://127.0.0.1:4173/analytics");
-await page
-  .getByRole("heading", { name: "Look how far you've come." })
-  .waitFor();
+await page.getByRole("heading", { name: "My progress" }).waitFor();
 await page.goto("http://127.0.0.1:4173/templates");
 await page.getByRole("heading", { name: "A little reading" }).waitFor();
 await page
@@ -197,10 +193,16 @@ assert.equal(
   await page.getByPlaceholder("e.g. Read daily").inputValue(),
   "A little reading",
 );
-await page.goto("http://127.0.0.1:4173/review");
+await page.goto("http://127.0.0.1:4173/week/review");
 await page.getByLabel("What worked?").fill("An achievable minimum helped.");
 await page.getByRole("button", { name: "Save my reflection" }).click();
 await page.reload();
+await expect(
+  page.getByRole("region", { name: "Saved weekly reflection" }),
+).toBeVisible();
+await page
+  .getByRole("button", { name: "Edit reflection", exact: true })
+  .click();
 await expect(page.getByLabel("What worked?")).toHaveValue(
   "An achievable minimum helped.",
 );
@@ -220,8 +222,8 @@ for (const route of [
   "/analytics",
   "/profile",
   "/settings",
-  "/tasks/new",
-  "/review",
+  "/habits/new",
+  "/week/review",
   "/templates",
 ]) {
   await page.goto(`http://127.0.0.1:4173${route}`);

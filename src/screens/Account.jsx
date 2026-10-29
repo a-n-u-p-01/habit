@@ -1,476 +1,468 @@
-import { ProfileNameForm } from "../ProfileName";
-import { useAccess, ROLE_LABELS } from "../access";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState } from "react";
+import { Link, Navigate } from "react-router-dom";
 import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Link,
-  NavLink,
-  useNavigate,
-  useParams,
-  useLocation,
-} from "react-router-dom";
-import {
-  Home,
-  BarChart3,
-  Plus,
-  Layers,
-  User,
   ArrowRight,
-  ArrowLeft,
-  Check,
-  ChevronRight,
-  ChevronLeft,
-  Flame,
-  Mountain,
-  BookOpen,
-  Sparkles,
+  Target,
+  CalendarDays,
+  CheckCircle2,
   Settings,
-  LogOut,
-  Search,
-  Star,
-  Bookmark,
-  Trash2,
-  Edit3,
-  X,
   Sun,
   Moon,
   Monitor,
   Cloud,
   CloudOff,
-  Download,
-  Bell,
+  LogOut,
+  Trash2,
+  ChevronRight,
   Shield,
   HelpCircle,
-  Menu,
-  Target,
-  Calendar,
-  Heart,
-  Trophy,
-  RefreshCw,
 } from "lucide-react";
-import {
-  AppProvider,
-  useApp,
-  usePublicTemplates,
-  templateStats,
-  reviewTemplate,
-  listenReviews,
-  recordUsage,
-  loadPublicTemplate,
-} from "../store";
-import {
-  WEEKDAYS,
-  CATEGORIES,
-  LEVELS,
-  dateKey,
-  daysBack,
-  weekDates,
-  scheduled,
-  achieved,
-  dayStatus,
-  statistics,
-  newRequirement,
-  validateTask,
-  starterTemplates,
-  exemplar,
-  parseDate,
-  totalWork,
-  progressId,
-} from "../domain";
-import {
-  cx,
-  CategoryIcon,
-  Tier,
-  Empty,
-  PageTitle,
-  Stats,
-  RequirementText,
-  Progression,
-  Avatar,
-} from "../components";
+import { ProfileNameForm } from "../ProfileName";
+import { useApp } from "../store";
+import { Avatar, PageTitle } from "../components";
+
+// Keep existing bookmarks working without maintaining a second account hub.
 export function Profile() {
-  const app = useApp();
-  const access = useAccess();
-  const allKeys = [
-    ...new Set([
-      ...app.progress.map((p) => p.date),
-      ...app.tasks.flatMap((t) =>
-        daysBack(
-          Math.min(
-            3660,
-            Math.max(
-              1,
-              Math.floor(
-                (new Date() - parseDate(t.createdDay || dateKey())) / 86400000,
-              ) + 2,
-            ),
-          ),
-        ),
-      ),
-    ]),
-  ];
-  const stats = statistics(app.tasks, app.progress, allKeys);
-  return (
-    <>
-      <PageTitle eyebrow="THIS IS YOUR OWN JOURNEY" title="Your corner." />
-      <section className="panel profile-card">
-        <Avatar />
-        <h2>{app.user?.displayName || "One small step at a time."}</h2>
-        <p>
-          {app.user
-            ? "Your wins, safely in your own space."
-            : "Your data is saved on this device. Sign in for cloud sync."}
-        </p>
-        {app.user && access.ready && (
-          <span className="role-badge">{ROLE_LABELS[access.role]}</span>
-        )}
-        {!app.user && (
-          <button className="button" onClick={() => app.login()}>
-            Continue with Google
-            <ArrowRight size={17} />
-          </button>
-        )}
-        <Stats
-          items={[
-            [stats.daysWon, "Days Won"],
-            [stats.tasksWon, "Habits achieved"],
-            [stats.t3, "T3 badges"],
-          ]}
-        />
-      </section>
-      {app.user && (
-        <section className="panel form-section profile-name-section">
-          <h2>Your app identity</h2>
-          <ProfileNameForm key={app.user.uid} />
-        </section>
-      )}
-      {app.user && app.guestCount > 0 && (
-        <div className="banner">
-          You have {app.guestCount} records on this device that haven't been
-          imported.
-          <button
-            onClick={() =>
-              app.importGuest().catch((e) => app.setError(e.message))
-            }
-          >
-            Import device data
-          </button>
-        </div>
-      )}
-      <div className="profile-layout profile-account-layout">
-        <section className="panel profile-menu">
-          {[
-            [Target, "My habits", "/habits"],
-            [BarChart3, "My progress", "/analytics"],
-            [Layers, "My Templates", "/templates?tab=mine"],
-            [Bookmark, "Saved Templates", "/templates?tab=saved"],
-            [Sparkles, "Weekly Review", "/review"],
-            [Settings, "Settings & Privacy", "/settings"],
-            [HelpCircle, "Help & Philosophy", "/help"],
-            [HelpCircle, "Report or suggest", "/feedback"],
-            ...(access.isStaff
-              ? [
-                  [Shield, "Users", "/admin/users"],
-                  [BookOpen, "Reports & suggestions", "/admin/feedback"],
-                ]
-              : []),
-          ].map(([Icon, label, to]) => (
-            <Link key={to} to={to}>
-              <Icon size={19} />
-              <span>{label}</span>
-              <ChevronRight size={18} />
-            </Link>
-          ))}
-          {app.user && (
-            <button onClick={() => app.logout()}>
-              <LogOut size={19} />
-              <span>Sign out</span>
-              <ChevronRight size={18} />
-            </button>
-          )}
-          <blockquote>
-            “A little progress each day
-            <br />
-            adds up to big results.”
-          </blockquote>
-        </section>
-      </div>
-    </>
-  );
+  return <Navigate to="/settings" replace />;
 }
+
 export function SettingsPage() {
   const app = useApp();
-  const [reminder, setReminder] = useState(() => {
+  const [busy, setBusy] = useState("");
+  async function perform(key, action) {
+    if (busy) return;
+    setBusy(key);
     try {
-      return JSON.parse(
-        localStorage.getItem("win-reminder") ||
-          '{"enabled":false,"time":"09:00"}',
-      );
-    } catch {
-      return { enabled: false, time: "09:00" };
-    }
-  });
-  async function saveReminder(e) {
-    e.preventDefault();
-    localStorage.setItem("win-reminder", JSON.stringify(reminder));
-    if (app.user)
-      await app.persist("weeklyReviews", "reminder-preference", {
-        kind: "reminderPreference",
-        ...reminder,
-      });
-    app.setNotice(
-      "Preference saved on this device. Background push is not enabled in this frontend-only build.",
-    );
-  }
-  async function download() {
-    try {
-      const value = await app.exportData(),
-        blob = new Blob([JSON.stringify(value, null, 2)], {
-          type: "application/json",
-        }),
-        url = URL.createObjectURL(blob),
-        a = document.createElement("a");
-      a.href = url;
-      a.download = `win-today-${dateKey()}.json`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) {
-      app.setError(e.message);
+      await action();
+    } catch (error) {
+      app.setError(error.message);
+    } finally {
+      setBusy("");
     }
   }
   return (
-    <>
-      <PageTitle
-        back="/profile"
-        eyebrow="MAKE YOUR CORNER FEEL LIKE YOU"
-        title="Settings & privacy."
-      />
-      <div className="settings-grid">
-        <section className="panel form-section">
-          <h2>
-            <Sun size={21} /> Appearance
-          </h2>
-          <div className="theme-options">
-            {[
-              [Sun, "light"],
-              [Moon, "dark"],
-              [Monitor, "system"],
-            ].map(([Icon, value]) => (
+    <div className="minimal-settings settings-list-page">
+      <PageTitle title="Settings" />
+      <div className="settings-workspace-grid settings-vertical">
+        <section
+          className="panel essentials-card settings-account-card"
+          aria-labelledby="account-heading"
+        >
+          <header className="essentials-heading">
+            <h2 id="account-heading">Account</h2>
+          </header>
+          <div className="settings-account-row">
+            <Avatar />
+            <div>
+              <strong>{app.user?.displayName || "Not signed in"}</strong>
+            </div>
+            {app.user && (
               <button
-                key={value}
-                className={app.theme === value ? "selected" : ""}
-                onClick={() => app.setTheme(value)}
+                className="button secondary settings-small-button"
+                disabled={!!busy}
+                onClick={() => perform("logout", app.logout)}
               >
-                <Icon />
-                {value}
+                <LogOut size={15} />
+                {busy === "logout" ? "Signing out…" : "Sign out"}
               </button>
-            ))}
+            )}
           </div>
-        </section>
-        <section className="panel form-section">
-          <h2>
-            <Bell size={21} /> Gentle reminders
-          </h2>
-          <form onSubmit={saveReminder}>
-            <label className="confirm-row">
-              <input
-                type="checkbox"
-                checked={reminder.enabled}
-                onChange={(e) =>
-                  setReminder({ ...reminder, enabled: e.target.checked })
-                }
-              />
-              I'd like a daily reminder
-            </label>
-            <label>
-              Preferred local time
-              <input
-                type="time"
-                value={reminder.time}
-                onChange={(e) =>
-                  setReminder({ ...reminder, time: e.target.value })
-                }
-              />
-            </label>
-            <p className="muted">
-              Preference only. This app does not send background push
-              notifications. No permission request or fake reminders.
-            </p>
-            <button className="button secondary">Save preference</button>
-          </form>
-        </section>
-        <section className="panel form-section">
-          <h2>
-            <Shield size={21} /> Your data belongs to you
-          </h2>
-          <p>
-            Google handles sign-in and Firebase Authentication may retain your
-            Google account details. The app uses only your chosen app name and a
-            neutral avatar. Your private habits, progress, templates and
-            reflections remain owner-only. Admins see chosen app profiles and
-            reports, not your private habits.
-          </p>
-          <p>
-            Publishing a template or posting a review makes its content and your
-            app name public. Public author IDs remain visible for ownership; an
-            app name is not anonymity. Using a template does not publish a usage
-            identifier. Reports are private to you and the admin team.
-          </p>
-          <p className="muted">
-            Signed-in Firestore data is kept in this tab's memory, not a
-            persistent offline database. Reconnect and sync before closing the
-            tab or signing out. Device-only guest data still stays in this
-            browser until cleared or imported. Use a private window on shared
-            devices.
-          </p>
-          {app.oldCacheCleared === false && (
-            <div className="banner" role="status">
-              <p>
-                An older offline cache may still exist. It is not deleted
-                automatically because it might contain unsynced work. Sync and
-                close older tabs first.
-              </p>
+          {app.user ? (
+            <ProfileNameForm key={app.user.uid} compact />
+          ) : (
+            <div className="settings-login">
               <button
-                className="button secondary"
-                onClick={() =>
-                  app.removeLegacyCache().catch((e) => app.setError(e.message))
-                }
+                className="button"
+                disabled={!!busy || !app.online}
+                onClick={() => perform("login", () => app.login())}
               >
-                Remove older cloud cache
+                Continue with Google
               </button>
             </div>
           )}
-          <button className="button secondary" onClick={download}>
-            <Download size={17} />
-            Export my data
-          </button>
-          <button
-            className="text-button danger"
-            onClick={async () => {
-              if (
-                !confirm(
-                  app.user
-                    ? "Permanently delete your account, private data, public templates, reviews and usage records? This cannot be undone."
-                    : "Delete all guest data on this device? This cannot be undone.",
-                )
-              )
-                return;
-              try {
-                await app.erase();
-              } catch (e) {
-                app.setError(
-                  `${e.message} For account deletion, sign out and sign in again if Firebase requires a recent login, then retry.`,
-                );
-              }
-            }}
-          >
-            <Trash2 size={16} />
-            {app.user ? "Delete account & app data" : "Clear device data"}
-          </button>
-        </section>
-        <section className="panel form-section">
-          <h2>
-            <User size={21} /> Account
-          </h2>
-          <p>
-            {app.user
-              ? app.user.displayName
-              : "You are using this device without an account."}
-          </p>
-          {app.user ? (
-            <button className="button secondary" onClick={() => app.logout()}>
-              <LogOut size={17} />
-              Sign out
-            </button>
-          ) : (
-            <>
-              <button className="button" onClick={() => app.login()}>
-                Continue with Google
+          {app.user && app.guestCount > 0 && (
+            <div className="settings-conditional">
+              <div>
+                <strong>Unsynced device data</strong>
+                <p>{app.guestCount} local records are ready to import.</p>
+              </div>
+              <button
+                className="button secondary settings-small-button"
+                disabled={!!busy || !app.online}
+                onClick={() => perform("import", app.importGuest)}
+              >
+                {busy === "import" ? "Importing…" : "Import device data"}
               </button>
-              <button className="text-button" onClick={() => app.login(true)}>
-                Use redirect sign-in
-              </button>
-            </>
+            </div>
           )}
-          <Link className="text-button" to="/help">
-            <HelpCircle size={17} />
-            Help & feedback
-          </Link>
-          <button
-            className="text-button"
-            onClick={() => {
-              localStorage.removeItem("win-onboarded");
-              window.location.assign("/welcome");
-            }}
-          >
-            Replay the welcome
-          </button>
+        </section>
+
+        <section
+          className="panel essentials-card"
+          aria-labelledby="appearance-heading"
+        >
+          <div className="settings-preference-row">
+            <div>
+              <h2 id="appearance-heading">Appearance</h2>
+            </div>
+            <div
+              className="settings-theme-switch"
+              role="group"
+              aria-label="Color theme"
+            >
+              {[
+                [Sun, "light", "Light"],
+                [Moon, "dark", "Dark"],
+                [Monitor, "system", "System"],
+              ].map(([Icon, value, label]) => (
+                <button
+                  key={value}
+                  aria-pressed={app.theme === value}
+                  onClick={() => app.setTheme(value)}
+                >
+                  <Icon size={16} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+        <section
+          className="panel essentials-card"
+          aria-labelledby="data-heading"
+        >
+          <header className="essentials-heading">
+            <h2 id="data-heading">Data & privacy</h2>
+            <Shield size={16} />
+          </header>
+          <div className="settings-data-item">
+            <h3>
+              <Cloud size={16} />
+              Storage
+            </h3>
+            <p>
+              {app.user
+                ? "Saved changes are stored online when connected. Sign in with the same Google account on another device to access your habits, progress and reflections."
+                : "Your data is saved in this browser only. Sign in to save changes online and access them on other devices."}
+            </p>
+            {!app.user && app.guestCount > 0 && (
+              <p className="settings-storage-import-note">
+                Import existing device data after signing in.
+              </p>
+            )}
+          </div>
+          <div className="settings-data-item">
+            <h3>
+              <Shield size={16} />
+              Privacy
+            </h3>
+            <p>
+              Your habits and progress are private. Templates and reviews are
+              public only when you share them.
+            </p>
+          </div>
+          {app.oldCacheCleared === false && (
+            <div className="settings-conditional">
+              <div>
+                <strong>Older offline cache detected</strong>
+                <p>
+                  Keep older tabs open until pending changes finish saving, then
+                  close them before removing this cache.
+                </p>
+              </div>
+              <button
+                className="button secondary settings-small-button"
+                disabled={!!busy || !app.online || app.pending}
+                onClick={() => perform("cache", app.removeLegacyCache)}
+              >
+                {busy === "cache" ? "Removing…" : "Remove older cloud cache"}
+              </button>
+            </div>
+          )}
+          <details className="settings-danger">
+            <summary>
+              {app.user ? "Delete account & data" : "Clear device data"}
+              <ChevronRight size={15} />
+            </summary>
+            <p>
+              {app.user
+                ? "Permanently removes your account, private data, public templates, reviews and usage records. This cannot be undone."
+                : "Permanently removes all guest data in this browser. This cannot be undone."}
+            </p>
+            <button
+              className="text-button danger"
+              disabled={!!busy || (!!app.user && !app.online)}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    app.user
+                      ? "Permanently delete your account and all app data? This cannot be undone."
+                      : "Delete all guest data on this device? This cannot be undone.",
+                  )
+                )
+                  perform("erase", app.erase);
+              }}
+            >
+              <Trash2 size={15} />
+              {busy === "erase"
+                ? "Deleting…"
+                : app.user
+                  ? "Delete account & app data"
+                  : "Clear device data"}
+            </button>
+          </details>
         </section>
       </div>
-    </>
+      <footer className="settings-support">
+        <Link to="/help">
+          <HelpCircle size={14} />
+          Help & feedback
+          <ChevronRight size={13} />
+        </Link>
+      </footer>
+    </div>
   );
 }
-export function Help() {
+
+export function Help({ embedded = false }) {
   return (
-    <>
-      <PageTitle
-        back="/profile"
-        eyebrow="A KINDER KIND OF CONSISTENCY"
-        title="Your minimum is enough."
-      />
-      <div className="help-content panel form-section">
-        <h2>Win Today, not finish everything.</h2>
-        <p>
-          T1 is the smallest meaningful promise you can keep even on a hard day.
-          Achieve your T1 badge, and your habit minimum is met. T2 and T3 add
-          more effort only when you want to.
-        </p>
-        <h3>Additional means additional.</h3>
-        <p>
-          If T1 is 10 push-ups and T2 is +5, a T2 badge represents 15 push-ups
-          in total. You never repeat T1 inside T2.
-        </p>
-        <h3>How does a day count as won?</h3>
-        <p>
-          Achieve a T1 badge on every habit scheduled that day. An unscheduled
-          rest day is not a missed day, and days without habits are not counted
-          as wins.
-        </p>
-        <h3>Can I change my mind?</h3>
-        <p>
-          Yes. Pause, edit or remove habits in My habits. Existing daily
-          sessions keep their original requirements. Schedule changes affect
-          today and future days; old schedule versions are retained.
-        </p>
-        <h3>What if I miss a day?</h3>
-        <p>
-          Come back. No penalties, no leaderboard, no broken identity. If the
-          minimum is consistently difficult, make it smaller in your weekly
-          review.
-        </p>
-        <h3>Offline & device data</h3>
-        <p>
-          Guest data is stored in this browser. Google sign-in enables Firestore
-          sync. Import device data explicitly in Your corner after signing in.
-          Sessions loaded in the current tab can be continued offline. Sync
-          before closing the tab; cloud data is not kept in a persistent offline
-          cache. Starting a new cloud session needs a connection.
-        </p>
-        <h3>Feedback</h3>
-        <p>
-          Report a problem or suggest an improvement directly to the admin team.
-          Sign in to send feedback and follow its status.
-        </p>
-        <Link className="button secondary" to="/feedback">
-          Report or suggest
-        </Link>
-        <Link className="button" to="/">
-          Back to today
-          <ArrowRight size={17} />
-        </Link>
+    <div className="help-workspace">
+      {!embedded && (
+        <>
+          <PageTitle eyebrow="QUICK GUIDE" title="Help & guide" />
+          <p className="help-lede">
+            The essentials for tracking habits, saving progress, and getting
+            unstuck.
+          </p>
+        </>
+      )}
+      <div className="help-guide-grid">
+        <section
+          className="panel help-guide-card"
+          aria-labelledby="daily-guide-heading"
+        >
+          <header>
+            <CheckCircle2 size={19} />
+            <h2 id="daily-guide-heading">Your daily flow</h2>
+          </header>
+          <ol className="help-step-list">
+            <li>
+              <strong>Create a manageable habit</strong>
+              <p>
+                Choose its scheduled days and define the tasks for each tier.
+                Make T1 small enough for a busy day.
+              </p>
+            </li>
+            <li>
+              <strong>Complete and confirm</strong>
+              <p>
+                On Today, open the completion action for a habit. Confirm only
+                what you actually finished, then save.
+              </p>
+            </li>
+            <li>
+              <strong>Know when your day is won</strong>
+              <p>
+                Complete T1 for every habit scheduled that day. Days with no
+                scheduled habits are rest days, not wins or misses.
+              </p>
+            </li>
+          </ol>
+          <Link className="help-inline-link" to="/">
+            Go to Today <ArrowRight size={14} />
+          </Link>
+        </section>
+        <section
+          className="panel help-guide-card"
+          aria-labelledby="tiers-guide-heading"
+        >
+          <header>
+            <Target size={19} />
+            <h2 id="tiers-guide-heading">How tiers work</h2>
+          </header>
+          <div className="help-tier-list">
+            {[
+              [
+                "T1",
+                "Your minimum win",
+                "Finish every T1 task to achieve the habit for the day.",
+              ],
+              [
+                "T2",
+                "An optional extra",
+                "Complete T1 first, then the additional T2 tasks.",
+              ],
+              [
+                "T3",
+                "Go further if you want",
+                "Complete T1 and T2, then the additional T3 tasks.",
+              ],
+            ].map(([tier, title, copy]) => (
+              <div key={tier}>
+                <span className={`help-tier ${tier.toLowerCase()}`}>
+                  {tier}
+                </span>
+                <div>
+                  <h3>{title}</h3>
+                  <p>{copy}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="help-note">
+            Example: T1 = 10 push-ups and T2 = 5 more means 15 total. You don’t
+            repeat T1 to earn T2.
+          </p>
+        </section>
+        <section
+          className="panel help-guide-card"
+          aria-labelledby="questions-guide-heading"
+        >
+          <header>
+            <HelpCircle size={19} />
+            <h2 id="questions-guide-heading">Common questions</h2>
+          </header>
+          <div className="help-faq-list">
+            <details>
+              <summary>
+                How do I record a weekly reflection?
+                <ChevronRight size={15} />
+              </summary>
+              <p>
+                Open <Link to="/week/review">Weekly reflection</Link>, choose
+                the week, and write what worked, what was difficult, or one next
+                step. Save before leaving. Saved reflections can be reopened
+                from its week selector.
+              </p>
+            </details>
+            <details>
+              <summary>
+                Why won’t my changes save?
+                <ChevronRight size={15} />
+              </summary>
+              <p>
+                Check your connection, complete required fields, and read any
+                error shown on the page. Cloud actions need a signed-in account.
+                If it still fails,{" "}
+                <Link to="/help?section=feedback">report the problem</Link> with
+                the page, steps and error message—never a password.
+              </p>
+            </details>
+            <details>
+              <summary>
+                Where can I follow up on feedback?
+                <ChevronRight size={15} />
+              </summary>
+              <p>
+                Open{" "}
+                <Link to="/help?section=submissions">Your submissions</Link> to
+                see Open, In progress or Resolved status. Reports are visible
+                only to you and the admin team. Sign in to send or track
+                feedback.
+              </p>
+            </details>
+
+            <details>
+              <summary>
+                Forgot to record a completed habit?
+                <ChevronRight size={15} />
+              </summary>
+              <p>
+                Open <Link to="/week">This week</Link> and select the past
+                habit’s completion action. You can log the previous seven
+                calendar days when the habit was scheduled. Confirm the
+                requirements you actually completed.
+              </p>
+            </details>
+            <details>
+              <summary>
+                Need to change or pause a habit?
+                <ChevronRight size={15} />
+              </summary>
+              <p>
+                Use <Link to="/habits">My habits</Link> to edit, pause, or
+                reorder it. Existing daily sessions keep their saved
+                requirements; editing a habit does not rewrite those sessions.
+              </p>
+            </details>
+            <details>
+              <summary>
+                Are my templates public?
+                <ChevronRight size={15} />
+              </summary>
+              <p>
+                Private templates stay in your account. Publishing a template
+                makes its content and your chosen app name public. Posting a
+                review also shares its content and your app name.
+              </p>
+            </details>
+            <details>
+              <summary>
+                What if I miss a day?
+                <ChevronRight size={15} />
+              </summary>
+              <p>
+                Continue with today’s habits. Don’t log work you didn’t do. If
+                T1 is often too much, reduce it in My habits so your minimum is
+                realistic.
+              </p>
+            </details>
+          </div>
+        </section>
+        <section
+          className="panel help-guide-card"
+          aria-labelledby="sync-guide-heading"
+        >
+          <header>
+            <Cloud size={19} />
+            <h2 id="sync-guide-heading">Keep your progress safe</h2>
+          </header>
+          <div className="help-safety-list">
+            <div>
+              <h3>Using this device only</h3>
+              <p>
+                Guest data lives in this browser. Clearing browser data can
+                remove it. Sign in for cloud sync, then import local records
+                from Settings.
+              </p>
+            </div>
+            <div>
+              <h3>Signed in or working offline</h3>
+              <p>
+                After you save a change, cloud syncing happens automatically
+                when connected—there is no manual sync button. Loaded sessions
+                can continue offline in this tab, but closing it before pending
+                changes reach the cloud can lose those changes. New cloud
+                sessions need a connection.
+              </p>
+            </div>
+            <div>
+              <h3>Your privacy</h3>
+              <p>
+                Your habits and progress are private. Admins can read your app
+                profile and feedback, not your private habit records.
+              </p>
+            </div>
+          </div>
+          <Link className="help-inline-link" to="/settings">
+            <Shield size={14} />
+            Open privacy settings <ArrowRight size={14} />
+          </Link>
+        </section>
       </div>
-    </>
+      {!embedded && (
+        <>
+          <section className="help-contact-strip">
+            <div>
+              <strong>Still stuck or have an idea?</strong>
+              <p>Send a private report or suggestion and track its status.</p>
+            </div>
+            <Link className="button secondary" to="/help?section=feedback">
+              Report or suggest <ArrowRight size={15} />
+            </Link>
+          </section>
+        </>
+      )}
+    </div>
   );
 }

@@ -157,12 +157,18 @@ try {
   await normal.page
     .getByRole("button", { name: "Send feedback", exact: true })
     .click();
+  await normal.page
+    .getByRole("link", { name: "Your submissions", exact: true })
+    .click();
   await expect(
     normal.page.getByRole("heading", {
       name: "Habit save problem",
       exact: true,
     }),
   ).toBeVisible();
+  await normal.page
+    .getByRole("link", { name: "Report or suggest", exact: true })
+    .click();
   await normal.page
     .getByLabel("Feedback type", { exact: true })
     .selectOption("suggestion");
@@ -174,6 +180,9 @@ try {
     .fill("Please add more reminder choices.");
   await normal.page
     .getByRole("button", { name: "Send feedback", exact: true })
+    .click();
+  await normal.page
+    .getByRole("link", { name: "Your submissions", exact: true })
     .click();
   await expect(
     normal.page.getByRole("heading", {
@@ -188,7 +197,7 @@ try {
   await expect(
     normal.page.getByRole("heading", { name: "Access restricted" }),
   ).toBeVisible();
-  await normal.page.goto(`${baseURL}/feedback`);
+  await normal.page.goto(`${baseURL}/help?section=submissions`);
 
   const staff = await openPage(admin, "/admin/feedback");
   await expect(
@@ -281,11 +290,11 @@ try {
     fullPage: true,
   });
 
-  await normal.page.goto(`${baseURL}/feedback`);
+  await normal.page.goto(`${baseURL}/help?section=submissions`);
   await normal.page.setViewportSize({ width: 390, height: 844 });
   await expect(
     normal.page.getByRole("heading", {
-      name: "Report or suggest.",
+      name: "Help & feedback",
       exact: true,
     }),
   ).toBeVisible();
@@ -306,11 +315,11 @@ try {
   await normal.page.goto(`${baseURL}/profile`);
   await expect(
     normal.page
-      .locator(".profile-menu")
-      .getByRole("link", { name: "Report or suggest" }),
+      .locator(".minimal-settings")
+      .getByRole("link", { name: "Help & feedback" }),
   ).toBeVisible();
   // The same flow must save both documents for an authenticated cloud user.
-  await normal.page.goto(`${baseURL}/tasks/new`);
+  await normal.page.goto(`${baseURL}/habits/new`);
   await normal.page
     .getByRole("link", { name: "Create manually", exact: true })
     .click();
@@ -517,7 +526,7 @@ try {
   });
   await normal.page.goto(`${baseURL}/week`);
   await normal.page
-    .getByRole("heading", { name: "Your week, in small wins.", exact: true })
+    .getByRole("heading", { name: "This week", exact: true })
     .waitFor();
   await normal.syncGroup("progress");
   if (!weekDates().includes(pastDay))
@@ -556,7 +565,7 @@ try {
     })
     .click();
   await expect(
-    lateDialog.getByText(/No original requirements were saved/),
+    lateDialog.getByText(/Original tasks weren’t saved/),
   ).toHaveCount(0);
   await lateDialog
     .getByRole("checkbox", {
@@ -599,7 +608,7 @@ try {
     assert.deepEqual(newSession.snapshot, encodeFirestore(historicalSnapshot));
     assert.equal(newSession.lateRequirementsSource, "saved_history");
   });
-  await normal.page.goto(`${baseURL}/tasks/${historicalTask.id}/edit`);
+  await normal.page.goto(`${baseURL}/habits/${historicalTask.id}/edit`);
   await expect(
     normal.page.getByRole("textbox", { name: "T1 task 1", exact: true }),
   ).toHaveValue("999 reps Push-ups");

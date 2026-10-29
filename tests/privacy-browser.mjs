@@ -248,10 +248,12 @@ try {
     .getByRole("button", { name: "Continue with this name", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Your corner.", exact: true }),
+    page.getByRole("heading", { name: "Settings", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Quiet fern", exact: true }),
+    page
+      .locator(".settings-account-row strong")
+      .filter({ hasText: "Quiet fern" }),
   ).toBeVisible();
   await page.goto(`${baseURL}/habits`);
   await expect(
@@ -270,11 +272,15 @@ try {
     .getByRole("button", { name: "Save app name", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Moss trail", exact: true }),
+    page
+      .locator(".settings-account-row strong")
+      .filter({ hasText: "Moss trail" }),
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Moss trail", exact: true }),
+    page
+      .locator(".settings-account-row strong")
+      .filter({ hasText: "Moss trail" }),
   ).toBeVisible();
   await env.withSecurityRulesDisabled(async (ctx) => {
     const profile = (
@@ -323,7 +329,9 @@ try {
     .getByRole("button", { name: "Continue with this name", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "River stone", exact: true }),
+    page
+      .locator(".settings-account-row strong")
+      .filter({ hasText: "River stone" }),
   ).toBeVisible();
   async function names() {
     let result;
@@ -352,7 +360,9 @@ try {
   await expect.poll(names).toEqual(["Moon fern", "Moon fern", "Moon fern"]);
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Moon fern", exact: true }),
+    page
+      .locator(".settings-account-row strong")
+      .filter({ hasText: "Moon fern" }),
   ).toBeVisible();
   mkdirSync("screenshots", { recursive: true });
   await page.screenshot({
@@ -376,6 +386,7 @@ try {
   });
   await page.goto(`${baseURL}/templates/other-public`);
   await expect(page.locator(".review-card").first()).toContainText("Moon fern");
+  await page.locator(".template-review-composer summary").click();
   await page
     .getByLabel("Your experience", { exact: true })
     .fill("Helpful and achievable. Updated with my app name.");
@@ -390,6 +401,10 @@ try {
   });
   await privateCard
     .getByRole("button", { name: "Publish", exact: true })
+    .click();
+  await page
+    .getByRole("dialog", { name: "Publish template?" })
+    .getByRole("button", { name: "Publish template", exact: true })
     .click();
   await expect(
     privateCard.getByRole("button", { name: "Unpublish", exact: true }),
@@ -409,15 +424,12 @@ try {
     assert.equal((await getDocs(collection(db, "templateUsages"))).size, 0);
   });
   await page.goto(`${baseURL}/settings`);
-  const downloadReady = page.waitForEvent("download");
-  await page
-    .getByRole("button", { name: "Export my data", exact: true })
-    .click();
-  const exportFile = await downloadReady;
-  const exportJSON = JSON.parse(readFileSync(await exportFile.path(), "utf8"));
-  assert.equal(exportJSON.profile.name, "Moon fern");
-  assert.equal(Object.hasOwn(exportJSON.profile, "email"), false);
-  assert.equal(Object.hasOwn(exportJSON.profile, "photoURL"), false);
+  await expect(
+    page.getByRole("button", { name: "Export my data", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Data & privacy", exact: true }),
+  ).toBeVisible();
   const databases = await page.evaluate(async () =>
     (await indexedDB.databases()).map((database) => database.name),
   );
@@ -499,7 +511,7 @@ try {
     assert.equal(text.includes(privateIdentity), false);
   await page.goto(`${baseURL}/profile`);
   await page
-    .locator(".profile-menu")
+    .locator(".minimal-settings")
     .getByRole("button", { name: "Sign out", exact: true })
     .click();
   await expect(page.locator(".sync-state")).toContainText("Device only");

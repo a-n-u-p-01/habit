@@ -1,0 +1,85 @@
+{
+  "scope": "Static Chromium fixture with real project CSS and representative review-card markup, not the running React application",
+  "results": [
+    {
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 480,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 480,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 600,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 600,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 1024,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 1024,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    }
+  ]
+}

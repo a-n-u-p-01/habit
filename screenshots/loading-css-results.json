@@ -1,0 +1,187 @@
+{
+  "scope": "Isolated Chromium CSS fixtures, actual bootstrap failure script and reduced-motion check; not full React/Firebase startup",
+  "results": [
+    {
+      "mode": "startup",
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "startup",
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "startup",
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "startup",
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "startup",
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "startup",
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "startup",
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "startup",
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "startup",
+      "width": 1280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "startup",
+      "width": 1280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "content",
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "content",
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "content",
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "content",
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "content",
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "content",
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "content",
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "content",
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "content",
+      "width": 1280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "content",
+      "width": 1280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "recovery",
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "recovery",
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "recovery",
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "recovery",
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "recovery",
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "recovery",
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "recovery",
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "recovery",
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "mode": "recovery",
+      "width": 1280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "mode": "recovery",
+      "width": 1280,
+      "theme": "dark",
+      "passed": true
+    }
+  ],
+  "bootstrapFailurePassed": true,
+  "reducedMotionPassed": true
+}

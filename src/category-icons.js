@@ -1,0 +1,15 @@
+export const CATEGORY_ICONS = Object.freeze({
+  Fitness: "Dumbbell",
+  Study: "BookOpen",
+  Mindfulness: "Brain",
+  Creative: "Palette",
+  Career: "Briefcase",
+  Life: "Compass",
+  Health: "HeartPulse",
+  Sleep: "BedDouble",
+  Nutrition: "Utensils",
+  Relationships: "Users",
+  Finance: "Wallet",
+  Home: "House",
+  Growth: "Sprout",
+});

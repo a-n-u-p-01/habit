@@ -66,7 +66,7 @@ const check = () =>
     })
     .check();
 try {
-  await page.goto("http://127.0.0.1:4173/tasks/new/manual");
+  await page.goto("http://127.0.0.1:4173/habits/new/manual");
   await expect(page.getByRole("spinbutton")).toHaveCount(0);
   await expect(page.getByText("Amount", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Unit", { exact: true })).toHaveCount(0);
@@ -131,7 +131,7 @@ try {
       .getByRole("article", { name: "Daily reset", exact: true })
       .locator(".tier"),
   ).toHaveText("T1");
-  await page.goto(`http://127.0.0.1:4173/task/${habit.id}`);
+  await page.goto(`http://127.0.0.1:4173/habits/${habit.id}`);
   await expect(page.locator(".summary-levels")).toContainText(
     "Drink a glass of water",
   );
