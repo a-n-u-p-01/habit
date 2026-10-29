@@ -8,7 +8,7 @@ Only user administration and feedback features have been added. Existing habit, 
 - `/admin/users` — admins and super admins can see and search app users. Only super admins can assign Admin or Super admin roles. Selecting User removes elevated permissions.
 - `/admin/feedback` — admins and super admins can read reports/suggestions and set their status to Open, In progress or Resolved.
 
-Links are in the sidebar and My space menu, including on mobile. Normal users cannot open admin pages even by entering their URLs directly.
+Links are in the sidebar and Your corner menu, including on mobile. Normal users cannot open admin pages even by entering their URLs directly.
 
 ## Access matrix
 
@@ -41,13 +41,13 @@ Do not add roles to the `users` profile collection and do not weaken the rules t
 
 ## Data and privacy
 
-- The user list reads existing `users/{uid}` app profiles, not the Firebase Authentication admin API. Accounts appear once they have signed in to the app; existing profiles remain visible. Email is added/verified against the auth token at the next sign-in, so older profiles can show only name and UID until then. Device-only guests are not registered users.
+- The user list reads confirmed chosen-name profiles from `users/{uid}`, not the Firebase Authentication admin API. It does not show email addresses or unconfirmed legacy Google profiles. Existing accounts appear after choosing their app name. Device-only guests are not registered users.
 - `userRoles/{uid}` stores elevated role, last modifier UID and server timestamp. Removing this document removes elevated access. This does not delete the account.
 - `feedback/{id}` stores author UID/name, type, title, message, status and server timestamps. Title limit is 120 characters; details limit is 5,000 characters. Only the sender and staff can read it.
 - Staff can change feedback status, but cannot rewrite the sender's message or impersonate a sender. Normal users cannot change status. The existing account-deletion flow also removes the user's feedback.
 - Account deletion is not a staff feature. An elevated role record may remain after an account is deleted; the Firebase owner may remove that orphaned role record in the console. It cannot be used by another account with a different UID.
 - Private habits, progress and reflections remain owner-only. Existing public templates/reviews are unchanged.
-- Writes require an internet connection. Errors preserve the feedback draft. As before, Firestore caches data locally; shared devices should use private browsing and clear site data after sign-out.
+- Writes require an internet connection. Errors preserve the feedback draft. Cloud data now stays in the current tab's memory; sync before closing. Older disk caches are removed only after explicit confirmation. Shared devices should use private browsing; device-only guest data remains local until cleared.
 
 ## Verification
 

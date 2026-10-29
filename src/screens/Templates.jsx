@@ -127,11 +127,9 @@ export function Templates() {
       (category === "All" || t.category === category),
   );
   list = [...list].sort((a, b) =>
-    sort === "popular"
-      ? (stats[b.id]?.uses || 0) - (stats[a.id]?.uses || 0)
-      : sort === "rating"
-        ? (stats[b.id]?.rating || 0) - (stats[a.id]?.rating || 0)
-        : Number(!!b.starter) - Number(!!a.starter),
+    sort === "rating"
+      ? (stats[b.id]?.rating || 0) - (stats[a.id]?.rating || 0)
+      : Number(!!b.starter) - Number(!!a.starter),
   );
   async function saveTemplate(t) {
     try {
@@ -148,6 +146,13 @@ export function Templates() {
     } catch {}
   }
   async function publish(t) {
+    if (
+      !t.published &&
+      !window.confirm(
+        `Publish this template publicly as ${app.user?.displayName || "your app name"}? Its requirements, description and author ID will be visible to anyone.`,
+      )
+    )
+      return;
     try {
       await (t.published ? app.unpublish(t) : app.publish(t));
     } catch (e) {
@@ -167,8 +172,8 @@ export function Templates() {
       <div className="template-intro panel">
         <Layers size={34} />
         <div>
-          <h2>Good habits don't need a grand plan.</h2>
-          <p>Start with a blueprint. Make it yours. Keep the minimum kind.</p>
+          <h2>Start small. Make it yours.</h2>
+          <p>Choose a template, adjust its tasks, and begin.</p>
         </div>
       </div>
       <div className="template-controls">
@@ -215,7 +220,6 @@ export function Templates() {
           onChange={(e) => setSort(e.target.value)}
         >
           <option value="recommended">Recommended starters</option>
-          <option value="popular">Most used</option>
           <option value="rating">Highest rated</option>
         </select>
       </div>
@@ -275,7 +279,14 @@ export function Templates() {
               <p>
                 {t.description || "One small promise. Three ways to show up."}
               </p>
-              <small>By {t.authorName || app.user?.displayName || "You"}</small>
+              <small>
+                By{" "}
+                {t.authorName ||
+                  (tab === "mine"
+                    ? app.user?.displayName
+                    : "Community member") ||
+                  "You"}
+              </small>
               <div className="template-meta">
                 <span>
                   <Star size={15} />
@@ -284,11 +295,11 @@ export function Templates() {
                     : "Not rated yet"}
                 </span>
                 <span>
-                  {stats[t.id]
-                    ? `${stats[t.id].uses} uses`
-                    : t.starter
-                      ? "Built-in example"
-                      : "—"}
+                  {t.starter
+                    ? "Built-in example"
+                    : tab === "mine"
+                      ? "Your blueprint"
+                      : "Community template"}
                 </span>
               </div>
               <div className="template-actions">
@@ -467,20 +478,17 @@ export function TemplateDetail() {
         <section>
           <p className="lede">{template.description}</p>
           <p className="muted">
-            By {template.authorName || app.user?.displayName || "You"} ·{" "}
+            By {template.authorName || "Community member"} ·{" "}
             {stats?.reviews
               ? `${stats.rating.toFixed(1)} stars · ${stats.reviews} reviews`
               : "No reviews yet"}{" "}
-            {stats ? `· ${stats.uses} uses` : ""}
           </p>
           <Progression task={template} />
           <Link className="button full" to="/tasks/new" state={{ template }}>
             Customize & use template
             <ArrowRight size={18} />
           </Link>
-          <p className="muted">
-            You'll choose your own schedule and can change every requirement.
-          </p>
+          <p className="muted">Choose your schedule and edit the tasks.</p>
         </section>
         <section className="panel form-section">
           <h2>Community reflections</h2>
@@ -522,6 +530,10 @@ export function TemplateDetail() {
               )}
               {app.user ? (
                 <form onSubmit={submit} className="review-form">
+                  <p className="muted">
+                    Your review and app name ({app.user.displayName}) will be
+                    public. Do not include private information.
+                  </p>
                   <h3>
                     {reviews.some((r) => r.authorId === app.user.uid)
                       ? "Update your review"
@@ -543,6 +555,7 @@ export function TemplateDetail() {
                   <label>
                     Your experience
                     <textarea
+                      aria-label="Your experience"
                       required
                       minLength={3}
                       maxLength={1000}

@@ -69,6 +69,7 @@ const routes = [
   "/templates",
   "/templates/starter-reading",
   "/profile",
+  "/habits",
   "/review",
   "/settings",
   "/help",

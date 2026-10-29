@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "checks": [
+    "Habit column fixed at both scroll extremes",
+    "Sunday visible on entry",
+    "Previous-week starts at Monday",
+    "Return to current week reveals Today",
+    "No page-level horizontal overflow",
+    "Long names wrap",
+    "320/390/760/1280 widths",
+    "Light and dark themes"
+  ]
+}

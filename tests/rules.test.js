@@ -36,6 +36,17 @@ after(async () => {
 });
 beforeEach(async () => {
   await env.clearFirestore();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    for (const [uid, name] of [
+      ["alice", "Alice"],
+      ["bob", "Bob"],
+    ])
+      await setDoc(doc(ctx.firestore(), "users", uid), {
+        displayName: name,
+        nameConfirmed: true,
+        photoURL: "",
+      });
+  });
 });
 const task = encodeFirestore({
   ...exemplar,
@@ -283,7 +294,11 @@ async function seedAccess() {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     for (const uid of ["alice", "bob", "admin", "super", "otherSuper"])
-      await setDoc(doc(db, "users", uid), { displayName: uid, photoURL: "" });
+      await setDoc(doc(db, "users", uid), {
+        displayName: uid,
+        nameConfirmed: true,
+        photoURL: "",
+      });
     for (const [uid, role] of [
       ["admin", "admin"],
       ["super", "super_admin"],
@@ -315,7 +330,11 @@ test("Only staff can list users; staff cannot read private habits or change prof
   await setDoc(doc(alice, "users/alice/tasks/a"), task);
   for (const uid of ["admin", "super"]) {
     const db = env.authenticatedContext(uid).firestore();
-    await assertSucceeds(getDocs(collection(db, "users")));
+    await assertSucceeds(
+      getDocs(
+        query(collection(db, "users"), where("nameConfirmed", "==", true)),
+      ),
+    );
     await assertSucceeds(getDocs(collection(db, "userRoles")));
     await assertFails(getDoc(doc(db, "users/alice/tasks/a")));
     await assertFails(
@@ -387,22 +406,47 @@ test("Only super admins grant, change and remove roles; own role changes are den
   );
 });
 
-test("Profile email is owner-only and cannot be forged; legacy profiles still work", async () => {
-  const db = env
-    .authenticatedContext("alice", { email: "alice@example.test" })
-    .firestore();
-  await assertSucceeds(
-    setDoc(doc(db, "users/alice"), { displayName: "Alice", photoURL: "" }),
-  );
+test("Profiles require a chosen name and reject Google email/photo persistence", async () => {
+  const db = env.authenticatedContext("alice").firestore();
   await assertSucceeds(
     setDoc(doc(db, "users/alice"), {
-      displayName: "Alice",
+      displayName: "Quiet fern",
+      nameConfirmed: true,
       photoURL: "",
-      email: "alice@example.test",
     }),
   );
   await assertFails(
-    updateDoc(doc(db, "users/alice"), { email: "admin@example.test" }),
+    updateDoc(doc(db, "users/alice"), { email: "alice@example.test" }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "users/alice"), {
+      photoURL: "https://example.test/photo.jpg",
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "users/alice"), {
+      photoURL: "http://lh3.googleusercontent.com/p",
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "users/alice"), {
+      photoURL: "https://evil.com/.googleusercontent.com/p",
+    }),
+  );
+  await assertSucceeds(
+    updateDoc(doc(db, "users/alice"), {
+      photoURL: "https://lh3.googleusercontent.com/a/p=s96-c",
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "users/alice"), { nameConfirmed: false }),
+  );
+  await assertFails(updateDoc(doc(db, "users/alice"), { displayName: "x" }));
+  await assertFails(
+    updateDoc(doc(db, "users/alice"), { displayName: "a".repeat(41) }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "users/alice"), { displayName: "email@example.test" }),
   );
 });
 
@@ -512,7 +556,11 @@ test("Staff can change status only; users cannot resolve or rewrite submissions"
 test("Revoking a staff role removes server access immediately", async () => {
   await seedAccess();
   const staff = env.authenticatedContext("admin").firestore();
-  await assertSucceeds(getDocs(collection(staff, "users")));
+  await assertSucceeds(
+    getDocs(
+      query(collection(staff, "users"), where("nameConfirmed", "==", true)),
+    ),
+  );
   const superDb = env.authenticatedContext("super").firestore();
   await deleteDoc(doc(superDb, "userRoles/admin"));
   await assertFails(getDocs(collection(staff, "users")));
@@ -640,5 +688,238 @@ test("New late sessions accept validated metadata and cannot forge wins without 
       level: 3,
       ...late,
     }),
+  );
+});
+
+test("Staff can read and list every app profile, including unchosen names; normal users cannot", async () => {
+  await seedAccess();
+  await env.withSecurityRulesDisabled(async (ctx) =>
+    setDoc(doc(ctx.firestore(), "users/legacy"), {
+      displayName: "Legacy Name",
+      photoURL: "",
+    }),
+  );
+  const staff = env.authenticatedContext("admin").firestore(),
+    normal = env.authenticatedContext("alice").firestore();
+  await assertSucceeds(getDoc(doc(staff, "users/legacy")));
+  await assertSucceeds(getDocs(collection(staff, "users")));
+  await assertFails(getDoc(doc(normal, "users/legacy")));
+  await assertFails(getDocs(collection(normal, "users")));
+});
+
+test("Public authors must use their chosen name; adoption identifiers are private", async () => {
+  const alice = env.authenticatedContext("alice").firestore(),
+    bob = env.authenticatedContext("bob").firestore(),
+    anon = env.unauthenticatedContext().firestore();
+  await assertFails(
+    setDoc(doc(alice, "templates/forged"), {
+      ...publicTemplate,
+      authorName: "Not Alice",
+    }),
+  );
+  await setDoc(doc(alice, "templates/public"), publicTemplate);
+  await setDoc(doc(bob, "templateUsages/public_bob"), {
+    templateId: "public",
+    userId: "bob",
+  });
+  await assertSucceeds(getDoc(doc(bob, "templateUsages/public_bob")));
+  await assertFails(getDoc(doc(anon, "templateUsages/public_bob")));
+  await assertFails(getDoc(doc(alice, "templateUsages/public_bob")));
+  await assertFails(getDocs(collection(anon, "templateUsages")));
+});
+
+test("Feedback authors can update their chosen name but not its message or status", async () => {
+  await seedAccess();
+  const db = env.authenticatedContext("alice").firestore();
+  await setDoc(doc(db, "feedback/name"), feedbackWrite("alice"));
+  await updateDoc(doc(db, "users/alice"), { displayName: "Quiet fern" });
+  await assertSucceeds(
+    updateDoc(doc(db, "feedback/name"), {
+      authorName: "Quiet fern",
+      updatedAt: serverTimestamp(),
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "feedback/name"), {
+      authorName: "Impersonation",
+      updatedAt: serverTimestamp(),
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "feedback/name"), {
+      message: "Changed",
+      authorName: "Quiet fern",
+      updatedAt: serverTimestamp(),
+    }),
+  );
+});
+
+test("An author can rename an orphaned legacy review but cannot rewrite its body", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  await env.withSecurityRulesDisabled(async (ctx) =>
+    setDoc(doc(ctx.firestore(), "reviews/deleted_alice"), {
+      templateId: "deleted",
+      authorId: "alice",
+      authorName: "Old Google Name",
+      text: "Existing review",
+      rating: 4,
+      recommend: true,
+      updatedAt: 1,
+    }),
+  );
+  await assertSucceeds(
+    updateDoc(doc(db, "reviews/deleted_alice"), {
+      authorName: "Alice",
+      updatedAt: 2,
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "reviews/deleted_alice"), {
+      text: "Rewritten",
+      authorName: "Alice",
+      updatedAt: 3,
+    }),
+  );
+});
+
+test("Task-only levels support many ordered tasks and require every task for a win", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  const rows = [1, 2, 3].map((tier) =>
+    Array.from({ length: 50 }, (_, i) => ({
+      id: `task-${tier}-${i}`,
+      label: `Complete step ${i + 1}`,
+    })),
+  );
+  const large = encodeFirestore({
+    ...task,
+    name: "Daily routine",
+    category: "Health",
+    levels: rows,
+  });
+  await assertSucceeds(setDoc(doc(db, "users/alice/tasks/a"), large));
+  await assertSucceeds(
+    setDoc(doc(db, "users/alice/templates/a"), { ...large, published: false }),
+  );
+  await assertSucceeds(
+    setDoc(doc(db, "templates/many"), {
+      ...publicTemplate,
+      category: "Health",
+      levels: large.levels,
+    }),
+  );
+  const id = "2026-10-27_a",
+    p = {
+      id,
+      taskId: "a",
+      date: "2026-10-27",
+      scheduled: true,
+      snapshot: {
+        name: large.name,
+        category: large.category,
+        weekdays: large.weekdays,
+        levels: large.levels,
+      },
+      checks: Object.fromEntries(rows[0].slice(0, -1).map((r) => [r.id, true])),
+    };
+  await assertSucceeds(setDoc(doc(db, "users/alice/progress", id), p));
+  const win = (level) => ({
+    id: `${id}_T${level}`,
+    taskId: "a",
+    date: p.date,
+    level,
+  });
+  await assertFails(setDoc(doc(db, "users/alice/wins", `${id}_T1`), win(1)));
+  const batch = writeBatch(db);
+  batch.update(doc(db, "users/alice/progress", id), {
+    checks: Object.fromEntries(rows[0].map((r) => [r.id, true])),
+  });
+  batch.set(doc(db, "users/alice/wins", `${id}_T1`), win(1));
+  await assertSucceeds(batch.commit());
+  await assertFails(setDoc(doc(db, "users/alice/wins", `${id}_T2`), win(2)));
+});
+
+test("Task-only schema rejects empty, nonstring, multiline and mismatched task lists", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  const good = { ids: ["one"], tasks: ["Read one page"] };
+  for (const bad of [
+    { ids: [], tasks: [] },
+    { ids: ["one"], tasks: [""] },
+    { ids: ["one"], tasks: ["   "] },
+    { ids: ["one"], tasks: [12] },
+    { ids: [12], tasks: ["Task"] },
+    { ids: ["one"], tasks: [true] },
+    { ids: ["one"], tasks: [{ label: "Task" }] },
+    { ids: ["one"], tasks: ["a\nb"] },
+    { ids: ["one"], tasks: ["x".repeat(161)] },
+    { ids: ["one", "two"], tasks: ["Task"] },
+  ])
+    await assertFails(
+      setDoc(doc(db, "users/alice/tasks/a"), {
+        ...task,
+        levels: {
+          t1: bad,
+          t2: { ids: ["two"], tasks: ["More"] },
+          t3: { ids: ["three"], tasks: ["Stretch"] },
+        },
+      }),
+    );
+  await assertFails(
+    setDoc(doc(db, "users/alice/tasks/a"), {
+      ...task,
+      levels: { t1: good, t2: good, t3: good },
+    }),
+  );
+});
+
+test("Editing a legacy blueprint can merge task text without changing old snapshots", async () => {
+  const db = env.authenticatedContext("alice").firestore();
+  await setDoc(doc(db, "users/alice/tasks/a"), task);
+  const id = "2026-10-27_a",
+    old = {
+      id,
+      taskId: "a",
+      date: "2026-10-27",
+      scheduled: true,
+      snapshot: encodeFirestore(exemplar),
+      checks: {},
+    };
+  await setDoc(doc(db, "users/alice/progress", id), old);
+  const rows = exemplar.levels.map((tier) =>
+    tier.map((r) => ({ id: r.id, label: `${r.amount} ${r.unit} ${r.label}` })),
+  );
+  await assertSucceeds(
+    setDoc(
+      doc(db, "users/alice/tasks/a"),
+      encodeFirestore({ ...task, levels: rows }),
+      { merge: true },
+    ),
+  );
+  const saved = (await getDoc(doc(db, "users/alice/tasks/a"))).data();
+  if (saved.levels.t1.tasks[0] !== "10 reps Push-ups")
+    throw new Error("Legacy target was lost");
+  const snapshot = (await getDoc(doc(db, "users/alice/progress", id))).data()
+    .snapshot;
+  if (JSON.stringify(snapshot) !== JSON.stringify(old.snapshot))
+    throw new Error("Old snapshot was changed");
+});
+
+test("Profile join date is a server timestamp at creation and immutable afterward", async () => {
+  const db = env.authenticatedContext("new-member").firestore();
+  const reference = doc(db, "users/new-member");
+  const profile = {
+    displayName: "New member",
+    nameConfirmed: true,
+    photoURL: "",
+  };
+  await assertFails(setDoc(reference, { ...profile, createdAt: 1 }));
+  await assertSucceeds(
+    setDoc(reference, { ...profile, createdAt: serverTimestamp() }),
+  );
+  await assertSucceeds(updateDoc(reference, { displayName: "New nickname" }));
+  await assertFails(updateDoc(reference, { createdAt: 1 }));
+  await assertFails(setDoc(reference, profile));
+  const legacy = env.authenticatedContext("alice").firestore();
+  await assertFails(
+    updateDoc(doc(legacy, "users/alice"), { createdAt: serverTimestamp() }),
   );
 });

@@ -1,5 +1,11 @@
 # Win Today
 
+Latest editor update: task-only rows, longer lists and new categories are documented in TASK_TEXT_UPDATE.md. Amount/unit inputs are removed. Publish the new rules with the app and refresh older clients.
+
+Latest navigation update: My habits is a dedicated page at /habits, available directly on desktop and mobile. Your corner contains profile/account features. See MY_HABITS_UPDATE.md.
+
+Latest release: chosen app names, Your corner, and privacy safeguards are described in PRIVACY_UPDATE.md. The compact-card confirmation modal, manual/template creation and past-seven-day corrections are retained. Deploy the updated Firestore rules with this frontend.
+
 A complete, mobile-first Vite + React + Firebase application. A small minimum is a real win; extra effort is always optional. Visual direction follows the supplied dark mountain-themed mockup: atmospheric landscape, deep navy cards, violet actions, green/cyan/lilac tiers, generous spacing, and a focused task flow. The included landscape is a real photograph, not an exact recreation of the mockup's illustrations. Light, dark, and system themes included.
 
 ## Run
@@ -40,9 +46,9 @@ If you see permission-denied, deploy the rules. If you see auth/operation-not-al
 1. React/Vite shell, routes, theme, responsive navigation, welcome flow.
 2. Task editor, weekday scheduling, incremental requirement model, local persistence.
 3. Focused T1 -> celebration -> optional T2 -> optional T3 -> cumulative summary.
-4. Firebase Google auth, private user paths, immutable daily session snapshots, atomic progress/win writes and offline caching.
+4. Firebase Google auth, private user paths, immutable daily session snapshots, atomic progress/win writes and memory-only cloud caching.
 5. Day-won calculation, weekly grid, personal analytics and review/recalibration.
-6. Private templates, public publishing, customization, saved templates, real reviews and unique-user adoption counts.
+6. Private templates, public publishing, customization, saved templates, real reviews without public adoption tracking.
 7. Security rules, indexes, PWA cache, export/deletion, automated tests and deployment checks.
 
 All seven are represented in this source. Live Firebase operation remains dependent on the console setup above.
@@ -53,9 +59,9 @@ Dates use the user's browser-local YYYY-MM-DD. Weekdays use JavaScript numbering
 
 ### users/{uid}
 
-    { displayName: string, photoURL: string, updatedAt: Timestamp }
+    { displayName: chosen app name (2–40 chars), nameConfirmed: true, photoURL: '', updatedAt: Timestamp }
 
-All private subcollections use the authenticated Firebase UID as the ownership boundary. Guests use the same shapes in localStorage under win-guest-v1. Device data is NEVER silently uploaded after sign-in. The user explicitly imports it in My space. Import is resumable/idempotent by document ID; cloud records already present take precedence.
+All private subcollections use the authenticated Firebase UID as the ownership boundary. Guests use the same shapes in localStorage under win-guest-v1. Device data is NEVER silently uploaded after sign-in. The user explicitly imports it in Your corner. Import is resumable/idempotent by document ID; cloud records already present take precedence.
 
 ### users/{uid}/tasks/{taskId}
 
@@ -70,9 +76,10 @@ All private subcollections use the authenticated Firebase UID as the ownership b
       updatedAt: Timestamp
     }
 
-    Requirement = { id: UUID, label: string, amount: positive number, unit: string }
+    New Task = { id: UUID, label: string }
+    Legacy Requirement = { id: UUID, label: string, amount: positive number, unit: string }
 
-Firestore stores levels as a named map (t1, t2, t3), because Firestore does not support directly nested arrays. src/serialization.js converts that map to/from the internal React array at positions 0, 1, 2. This conversion also covers saved-template snapshots and progress snapshots. Each tier contains ONLY the additional work for that level. A unit can be reps, pages, min, km, problems, sessions, etc. All 3 levels require 1–4 requirements. IDs must be unique across levels. The editor enforces positive quantities and explicit confirmation of additive semantics; software cannot infer from arbitrary prose whether an activity is truly incremental. For the same activity/unit, cumulative totals are computed by addition. Different units are never conflated.
+Firestore stores levels as a named map (t1, t2, t3), because Firestore does not support directly nested arrays. src/serialization.js converts that map to/from the internal React array at positions 0, 1, 2. This conversion also covers saved-template snapshots and progress snapshots. Each tier contains ONLY the additional work for that level. A unit can be reps, pages, min, km, problems, sessions, etc. New task-only blueprints use task text with no four-task cap; each of the three levels needs at least one task. Legacy measured rows below remain readable for existing records and history. IDs must be unique across levels. The editor enforces positive quantities and explicit confirmation of additive semantics; software cannot infer from arbitrary prose whether an activity is truly incremental. For the same activity/unit, cumulative totals are computed by addition. Different units are never conflated.
 
 Tasks are soft-deleted, preserving history. Schedule revisions apply from the local change date. Multiple edits within a day replace that day's schedule version. Pausing/resuming records another schedule revision.
 
@@ -85,7 +92,7 @@ Tasks are soft-deleted, preserving history. Schedule revisions apply from the lo
       createdAt: number, updatedAt?: Timestamp
     }
 
-A transaction creates this document once when a task is started. Its requirements are immutable. Existing daily sessions do not change when their task is edited. Individual checks merge separate nested fields, avoiding whole-map overwrites across devices. Once checked, a requirement is not undone through the UI. The highest consecutively satisfied level is derived from checks, not trusted client counters. You cannot jump directly to T2/T3. Progress creation requires connectivity; already-cached sessions can continue offline. Repeated starts and repeated checks do not create duplicate wins.
+A transaction creates this document once when a task is started. Its requirements are immutable. Existing daily sessions do not change when their task is edited. Individual checks merge separate nested fields, avoiding whole-map overwrites across devices. Once checked, a requirement is not undone through the UI. The highest consecutively satisfied level is derived from checks, not trusted client counters. You cannot jump directly to T2/T3. Progress creation requires connectivity; sessions loaded in the current tab can continue offline. Reconnect and sync before closing or reloading the tab: cloud data is not persisted as an offline Firestore database. Repeated starts and repeated checks do not create duplicate wins.
 
 ### users/{uid}/wins/{date}_{taskId}_T{1|2|3}
 
@@ -121,7 +128,7 @@ One review per user per template. Writing again updates that review. Only its au
 
     { templateId: string, userId: uid }
 
-One adoption record per authenticated user/template, created only after customization saves a task. Public aggregate reads power the actual unique-user use count. These documents intentionally reveal the adopting user's UID, not profile, email or private task contents. Explain this privacy choice before a public launch. Guests and built-in examples do not contribute fake counts. The task save can succeed even if usage sync fails; the UI reports that partial result.
+Legacy adoption records are now owner-readable only. The app no longer creates adoption identifiers when a user applies a template. Public usage counts and Most used sorting were removed rather than exposing users for this metric. Existing records are not silently deleted and remain eligible for owner/account cleanup.
 
 ### users/{uid}/savedTemplates/{templateId}
 
@@ -141,18 +148,18 @@ A special document reminder-preference in the same private collection stores {id
 - Private user data: owner-only reads and writes, explicit path allowlists.
 - Public templates: public reads and author-only modifications, validated shapes and levels.
 - Reviews: public reads, author ownership, unique deterministic IDs, rating/text constraints.
-- Usage: one immutable adoption per user/template; public read.
+- Usage: legacy records are owner-readable only; new adoptions are not tracked publicly.
 - Daily snapshots immutable after creation; wins require satisfied progress in the same atomic state.
-- Storage denied by default because uploads are not needed; Google photo URL is used directly.
+- Storage denied by default because uploads are not needed; Google profile photos are not used by the UI.
 - This is a personal habit tracker, not a tamper-proof competition. An owner can edit/import their own private data. No leaderboard or economic reward depends on the results.
 - Browser-local dates reflect the current device timezone. Travel can move date boundaries; there is no separate timezone settings system.
-- Account deletion reauthenticates first, then removes public authored templates/reviews/usages, private subcollections, profile document, and Firebase Auth user. It is a resumable sequence, not one cross-service transaction; reconnect and retry after partial network failure. Other people's saved copies/reviews remain theirs. Offline browser cache removal requires clearing site data.
+- Account deletion reauthenticates first, then removes public authored templates/reviews/usages, private subcollections, profile document, and Firebase Auth user. It is a resumable sequence, not one cross-service transaction; reconnect and retry after partial network failure. Other people's saved copies/reviews remain theirs. New cloud caching is memory-only. Older offline caches are detected and require explicit confirmation before removal in Settings; sync older tabs first. Device-only guest data remains local until explicitly cleared or imported.
 - Export produces a JSON backup; it is not a general restore-file feature. Device-to-cloud import is supported.
 - Rules test fixture included; emulator tests require Java 21+ and Firebase CLI. Run npm run test:rules. Do not deploy until these and the live smoke checks below pass.
 
 ## Screens and flows
 
-Welcome/philosophy/interactive example; Today with tasks/timeline and wins; one-level-at-a-time task flow; per-tier celebrations; cumulative summary; day-won state; weekly grid; period analytics, heatmap and task consistency; task creation/edit/pause/soft-delete; template library/search/category/recommended/popular/rated sorts; template detail/customization; personal/published/saved templates; unique reviews/recommendation feedback; profile; weekly reflection/recalibration; theme/reminder preferences/account/privacy/help settings; explicit empty/loading/error/offline states.
+Welcome/philosophy/interactive example; Today with compact habit cards, confirmed-completion modals and wins; one-level-at-a-time task flow; per-tier celebrations; cumulative summary; day-won state; weekly grid; period analytics, heatmap and task consistency; task creation/edit/pause/soft-delete; template library/search/category/recommended/rated sorts; template detail/customization; personal/published/saved templates; unique reviews/recommendation feedback; profile; weekly reflection/recalibration; theme/reminder preferences/account/privacy/help settings; explicit empty/loading/error/offline states.
 
 ## Honest notification boundary
 
@@ -202,7 +209,7 @@ Verification for this update: 17 domain/serialization/inline-action tests, 8 Fir
 ## Habit ordering and badge wording update
 
 
-- My space > My habits now supports drag handles on desktop and touch devices.
+- Your corner > My habits now supports drag handles on desktop and touch devices.
 - Up/down buttons and Space/arrow-key sorting are available as accessible alternatives.
 - Enabled and paused habits share the same saved order. Pausing, enabling or editing a habit does not reset it.
 - Today, Timeline, weekly grid, analytics consistency and other habit lists all consume the same ordered provider data.

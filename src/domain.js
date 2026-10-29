@@ -6,8 +6,15 @@ export const CATEGORIES = [
   "Creative",
   "Career",
   "Life",
+  "Health",
+  "Sleep",
+  "Nutrition",
+  "Relationships",
+  "Finance",
+  "Home",
+  "Growth",
 ];
-export const LEVELS = ["Minimum badge", "Momentum badge", "Full effort badge"];
+export const LEVELS = ["Daily minimum", "Extra step", "Stretch"];
 export const dateKey = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 export const parseDate = (key) => new Date(`${key}T12:00:00`);
@@ -51,6 +58,12 @@ export function achieved(progress) {
   }
   return level;
 }
+export const isTaskOnly = (r) =>
+  !!r && !Object.hasOwn(r, "amount") && !Object.hasOwn(r, "unit");
+export function taskText(r, additional = false) {
+  const label = r?.label || "";
+  return `${additional ? "+ " : ""}${isTaskOnly(r) ? label : `${r.amount} ${r.unit} ${label}`}`.trim();
+}
 // Plan exactly the requested next tier without altering previous wins.
 // Returning the same object for an already-earned tier makes retries idempotent.
 export function completeNextLevel(progress, target) {
@@ -80,6 +93,10 @@ export function totalWork(progress) {
     achieved(progress),
   ))
     for (const r of requirements) {
+      if (isTaskOnly(r)) {
+        totals.set(`task:${r.id}`, { label: r.label });
+        continue;
+      }
       const k = `${r.label.trim().toLowerCase()}|${r.unit.trim().toLowerCase()}`;
       const old = totals.get(k) || { label: r.label, unit: r.unit, amount: 0 };
       totals.set(k, {
@@ -118,32 +135,43 @@ export function statistics(tasks, progress, keys) {
 export const newRequirement = () => ({
   id: crypto.randomUUID(),
   label: "",
-  amount: 1,
-  unit: "reps",
 });
 export function validateTask(task) {
   if (!task.name?.trim()) return "Give your habit a name.";
   if (task.name.length > 80) return "Use a name under 80 characters.";
   if (!task.weekdays?.length) return "Choose at least one weekday.";
   if (!Array.isArray(task.levels) || task.levels.length !== 3)
-    return "Define all three levels.";
+    return "Add tasks for T1, T2 and T3.";
+  const textOnly = task.levels.every(
+    (rows) => Array.isArray(rows) && rows.every(isTaskOnly),
+  );
   const ids = new Set();
   for (const [i, rows] of task.levels.entries()) {
-    if (!rows.length || rows.length > 4)
-      return `T${i + 1} needs 1–4 requirements.`;
+    if (!Array.isArray(rows) || !rows.length)
+      return `Add at least one T${i + 1} task.`;
+    if (!textOnly && rows.length > 4)
+      return "Convert measured entries to task text before adding more tasks.";
     for (const r of rows) {
-      if (!r.id || ids.has(r.id)) return "Each requirement needs a unique ID.";
+      if (typeof r.id !== "string" || !r.id || ids.has(r.id))
+        return "Each task needs a unique ID.";
       ids.add(r.id);
       if (
+        typeof r.label !== "string" ||
         !r.label.trim() ||
-        r.label.length > 80 ||
-        !r.unit.trim() ||
-        r.unit.length > 24 ||
-        !Number.isFinite(Number(r.amount)) ||
-        Number(r.amount) <= 0 ||
-        Number(r.amount) > 100000
+        r.label.length > (textOnly ? 160 : 80) ||
+        /[\r\n\u0000-\u001f]/.test(r.label)
       )
-        return `T${i + 1}: add a label, positive amount, and unit.`;
+        return `T${i + 1}: write a clear task under ${textOnly ? 160 : 80} characters.`;
+      if (
+        !isTaskOnly(r) &&
+        (typeof r.unit !== "string" ||
+          !r.unit.trim() ||
+          r.unit.length > 24 ||
+          !Number.isFinite(Number(r.amount)) ||
+          Number(r.amount) <= 0 ||
+          Number(r.amount) > 100000)
+      )
+        return `T${i + 1}: add a valid task and target.`;
     }
   }
   return "";

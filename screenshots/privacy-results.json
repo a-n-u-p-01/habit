@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "checks": [
+    "First login asks a blank app-name prompt",
+    "Invalid email rejected",
+    "Profile stores only chosen app identity",
+    "Chosen name survives reload and does not change Google identity",
+    "Account switch does not show another account's data",
+    "Legacy Google identity never displayed",
+    "Existing public templates/reviews/private feedback renamed",
+    "New public content uses chosen name",
+    "Admin directory excludes emails and Google names",
+    "Admin directory shows Google photos",
+    "New cloud writes do not create a persistent Firestore database",
+    "Older offline work survives startup and cancelled cache removal",
+    "Mobile name editing",
+    "Sign-out discards prior account UI"
+  ]
+}

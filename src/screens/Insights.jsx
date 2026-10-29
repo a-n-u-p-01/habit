@@ -1,6 +1,12 @@
 import { pastEntryInfo } from "../history";
 import { PastCompletionDialog } from "../PastCompletionDialog";
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useLayoutEffect,
+} from "react";
 import {
   BrowserRouter,
   Routes,
@@ -93,6 +99,7 @@ import {
 export function Week() {
   const app = useApp();
   const [correction, setCorrection] = useState(null);
+  const tableScroll = useRef(null);
   const [offset, setOffset] = useState(0),
     keys = weekDates(offset),
     stats = statistics(app.tasks, app.progress, keys),
@@ -104,6 +111,28 @@ export function Week() {
         app.progress.some((p) => p.date === k && p.taskId === t.id),
     ),
   );
+  useLayoutEffect(() => {
+    const scroller = tableScroll.current;
+    if (!scroller) return;
+    const current = scroller.querySelector("thead .today-col");
+    const pinned = scroller.querySelector("thead th:first-child");
+    if (offset !== 0 || !current || !pinned) {
+      scroller.scrollLeft = 0;
+      return;
+    }
+    const pinnedWidth = pinned.getBoundingClientRect().width;
+    const cell = current.getBoundingClientRect();
+    const left =
+      cell.left - scroller.getBoundingClientRect().left + scroller.scrollLeft;
+    // Center today only in the space to the right of the pinned habit column.
+    // No scrollIntoView: that can move the entire page horizontally.
+    scroller.scrollLeft = Math.max(
+      0,
+      left -
+        pinnedWidth -
+        (scroller.clientWidth - pinnedWidth - cell.width) / 2,
+    );
+  }, [offset, today]);
   return (
     <>
       <PageTitle
@@ -144,89 +173,101 @@ export function Week() {
         previous 7 days to log it. Older days and rest days stay read-only.
       </p>
       <div className="panel week-table-wrap">
-        <table className="week-table">
-          <thead>
-            <tr>
-              <th>Your promises</th>
-              {keys.map((k) => (
-                <th className={k === today ? "today-col" : ""} key={k}>
-                  <small>{WEEKDAYS[parseDate(k).getDay()]}</small>
-                  {parseDate(k).getDate()}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visibleTasks.map((t) => (
-              <tr key={t.id}>
-                <th>
-                  <CategoryIcon category={t.category} />
-                  {t.name}
-                </th>
-                {keys.map((k) => {
-                  const p = app.progress.find(
-                      (p) => p.taskId === t.id && p.date === k,
-                    ),
-                    a = achieved(p),
-                    s = scheduled(t, k) || p?.scheduled;
-                  const canCorrect =
-                    a < 3 && pastEntryInfo(t, p, k, today).eligible;
-                  const lateLabel = p?.lateLoggedAt
-                    ? `Logged later on ${new Date(p.lateLoggedAt).toLocaleString()}`
-                    : "";
-                  const marker = a ? (
-                    <span className={`grid-win t${a}`}>
-                      {a === 1 ? <Check size={15} /> : <>T{a}</>}
-                    </span>
-                  ) : s ? (
-                    <span className={cx("grid-empty", k < today && "past")}>
-                      {k < today ? "·" : ""}
-                    </span>
-                  ) : (
-                    <span className="not-scheduled">—</span>
-                  );
-                  return (
-                    <td
-                      key={k}
-                      title={[
-                        a
-                          ? `T${a} badge achieved`
-                          : !s
-                            ? "Not scheduled"
-                            : k > today
-                              ? "Coming up"
-                              : k === today
-                                ? "A chance to show up"
-                                : "A fresh start is always ahead",
-                        lateLabel,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    >
-                      {canCorrect ? (
-                        <button
-                          type="button"
-                          className="week-correction-button"
-                          aria-label={`Log completion for ${t.name} on ${k}`}
-                          onClick={() =>
-                            setCorrection({ taskId: t.id, day: k })
-                          }
-                        >
-                          {marker}
-                        </button>
-                      ) : (
-                        marker
-                      )}
-                      {p?.lateLoggedAt && (
-                        <span className="late-entry-label">Logged later</span>
-                      )}
-                    </td>
-                  );
-                })}
+        <div
+          className="week-table-scroll"
+          ref={tableScroll}
+          tabIndex={0}
+          role="region"
+          aria-label="Weekly habit progress"
+        >
+          <table className="week-table">
+            <thead>
+              <tr>
+                <th scope="col">Your promises</th>
+                {keys.map((k) => (
+                  <th
+                    scope="col"
+                    className={k === today ? "today-col" : ""}
+                    key={k}
+                  >
+                    <small>{WEEKDAYS[parseDate(k).getDay()]}</small>
+                    {parseDate(k).getDate()}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {visibleTasks.map((t) => (
+                <tr key={t.id}>
+                  <th scope="row">
+                    <CategoryIcon category={t.category} />
+                    {t.name}
+                  </th>
+                  {keys.map((k) => {
+                    const p = app.progress.find(
+                        (p) => p.taskId === t.id && p.date === k,
+                      ),
+                      a = achieved(p),
+                      s = scheduled(t, k) || p?.scheduled;
+                    const canCorrect =
+                      a < 3 && pastEntryInfo(t, p, k, today).eligible;
+                    const lateLabel = p?.lateLoggedAt
+                      ? `Logged later on ${new Date(p.lateLoggedAt).toLocaleString()}`
+                      : "";
+                    const marker = a ? (
+                      <span className={`grid-win t${a}`}>
+                        {a === 1 ? <Check size={15} /> : <>T{a}</>}
+                      </span>
+                    ) : s ? (
+                      <span className={cx("grid-empty", k < today && "past")}>
+                        {k < today ? "·" : ""}
+                      </span>
+                    ) : (
+                      <span className="not-scheduled">—</span>
+                    );
+                    return (
+                      <td
+                        key={k}
+                        title={[
+                          a
+                            ? `T${a} badge achieved`
+                            : !s
+                              ? "Not scheduled"
+                              : k > today
+                                ? "Coming up"
+                                : k === today
+                                  ? "A chance to show up"
+                                  : "A fresh start is always ahead",
+                          lateLabel,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      >
+                        {canCorrect ? (
+                          <button
+                            type="button"
+                            className="week-correction-button"
+                            aria-label={`Log completion for ${t.name} on ${k}`}
+                            onClick={() =>
+                              setCorrection({ taskId: t.id, day: k })
+                            }
+                          >
+                            {marker}
+                          </button>
+                        ) : (
+                          marker
+                        )}
+                        {p?.lateLoggedAt && (
+                          <span className="late-entry-label">Logged later</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {!visibleTasks.length && (
           <Empty title="A week of possibilities">
             No scheduled habits in this week.

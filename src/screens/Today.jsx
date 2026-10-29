@@ -43,7 +43,7 @@ export function Today() {
     won: dayStatus(tasks, progress, day).dayWon,
   }));
   const daysWon = week.filter((day) => day.won).length;
-  const name = user?.displayName?.split(" ")[0];
+  const name = user?.displayName;
   const hour = new Date().getHours();
 
   return (

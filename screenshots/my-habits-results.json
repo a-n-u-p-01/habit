@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "checks": [
+    "Dedicated desktop and mobile tab",
+    "Management removed from Your corner",
+    "Active and paused counts",
+    "Create link",
+    "Pause and enable",
+    "Edit and return to manager",
+    "Reorder persistence",
+    "Cancel and confirm deletion",
+    "Past progress preserved",
+    "Progress still accessible",
+    "Mobile layout"
+  ]
+}

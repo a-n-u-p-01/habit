@@ -1,3 +1,4 @@
+import { isTaskOnly } from "./domain";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   BrowserRouter,
@@ -84,6 +85,13 @@ const icons = {
   Creative: Sparkles,
   Career: Target,
   Life: Sun,
+  Health: Heart,
+  Sleep: Moon,
+  Nutrition: Sun,
+  Relationships: User,
+  Finance: BarChart3,
+  Home: Home,
+  Growth: Sparkles,
 };
 export const cx = (...x) => x.filter(Boolean).join(" ");
 
@@ -127,8 +135,8 @@ export function PageTitle({ eyebrow, title, children, back }) {
 export function Stats({ items }) {
   return (
     <div className="stats-grid">
-      {items.map(([value, label]) => (
-        <div key={label}>
+      {items.map(([value, label], index) => (
+        <div key={`${label}-${index}`}>
           <strong>{value}</strong>
           <span>{label}</span>
         </div>
@@ -137,6 +145,14 @@ export function Stats({ items }) {
   );
 }
 export function RequirementText({ r, additional = false }) {
+  if (!r?.label?.trim()) return <span className="muted">Add a task</span>;
+  if (isTaskOnly(r))
+    return (
+      <>
+        {additional ? "+ " : ""}
+        {r.label}
+      </>
+    );
   return (
     <>
       <strong>
@@ -171,18 +187,24 @@ export function Progression({ task }) {
     </div>
   );
 }
-export function Avatar({ small = false }) {
-  const { user } = useApp();
-  return user?.photoURL ? (
-    <img
-      referrerPolicy="no-referrer"
+export function Avatar({ small = false, person }) {
+  const { user: current } = useApp();
+  const user = person || current;
+  return (
+    <span
       className={cx("avatar", small && "small")}
-      src={user.photoURL}
-      alt={user.displayName || "Profile"}
-    />
-  ) : (
-    <span className={cx("avatar", small && "small")}>
-      <User size={small ? 16 : 22} />
+      aria-label={user ? `Avatar for ${user.displayName}` : "Guest avatar"}
+    >
+      {user?.photoURL ? (
+        <img
+          src={user.photoURL}
+          alt=""
+          referrerPolicy="no-referrer"
+          loading="lazy"
+        />
+      ) : (
+        <User size={small ? 16 : 22} />
+      )}
     </span>
   );
 }

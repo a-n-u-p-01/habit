@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { UsersTable } from "../UsersTable";
 import {
   collection,
   doc,
@@ -48,7 +49,7 @@ function useRows(path, enabled, owner) {
           key,
           rows: [],
           loading: false,
-          error: `Could not load ${path === "feedback" ? "feedback" : "users or roles"}: ${e.message}`,
+          error: `Could not load ${path === "feedback" ? "feedback" : path === "templates" ? "templates" : "users or roles"}: ${e.message}`,
         }),
     );
   }, [path, enabled, owner, key]);
@@ -63,17 +64,25 @@ function timeLabel(value) {
 export function UsersPage() {
   const { user, online, setNotice } = useApp();
   const { isStaff, isSuperAdmin } = useAccess();
-  const users = useRows("users", isStaff, null);
-  const roles = useRows("userRoles", isStaff, null);
-  const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState(null);
-  const [error, setError] = useState("");
-  const roleById = Object.fromEntries(roles.rows.map((r) => [r.id, r.role]));
+  const users = useRows("users", isStaff, null),
+    roles = useRows("userRoles", isStaff, null);
+  const templates = useRows("templates", isStaff, null);
+  const [busy, setBusy] = useState(null),
+    [error, setError] = useState("");
   async function changeRole(uid, next) {
-    if (!isSuperAdmin || busy || !online || uid === user.uid) return;
+    if (
+      !isSuperAdmin ||
+      busy ||
+      !online ||
+      roles.loading ||
+      roles.error ||
+      uid === user?.uid ||
+      !Object.hasOwn(ROLE_LABELS, next)
+    )
+      return;
     if (
       !window.confirm(
-        `Change this user's role to ${ROLE_LABELS[next]}?${next === "user" ? " This removes their admin access." : ""}`,
+        `Change this user's role to ${ROLE_LABELS[next]}?${next === "user" ? " This removes admin access." : ""}`,
       )
     )
       return;
@@ -87,105 +96,48 @@ export function UsersPage() {
           updatedBy: user.uid,
           updatedAt: serverTimestamp(),
         });
-      setNotice("User role updated.");
+      setNotice("Role updated.");
     } catch (e) {
       setError(`Role was not changed: ${e.message}`);
     } finally {
       setBusy(null);
     }
   }
-  const filtered = users.rows
-    .filter((row) =>
-      `${row.displayName} ${row.email || ""} ${row.id}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-    )
-    .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
   return (
-    <>
-      <PageTitle
-        back="/profile"
-        eyebrow="ADMINISTRATION"
-        title="Users & roles."
+    <div className="admin-page users-page">
+      <PageTitle eyebrow="ADMINISTRATION" title="Users" />
+      <p className="users-intro">
+        A clear view of your community. Manage people and their permissions in
+        one place.
+      </p>
+      {(error || users.error || roles.error) && (
+        <p className="banner error" role="alert">
+          {error || users.error || roles.error}
+        </p>
+      )}
+      {templates.error && (
+        <p className="banner error" role="alert">
+          Template counts could not be loaded. Counts are unavailable, not zero.
+        </p>
+      )}
+      {!online && (
+        <p className="banner" role="status">
+          You're offline. Role changes are paused; displayed data may be out of
+          date.
+        </p>
+      )}
+      <UsersTable
+        users={users}
+        roles={roles}
+        templates={templates}
+        currentUserId={user?.uid}
+        isSuperAdmin={isSuperAdmin}
+        online={online}
+        busy={busy}
+        onChangeRole={changeRole}
+        setNotice={setNotice}
       />
-      <div className="panel form-section">
-        <p>
-          {isSuperAdmin
-            ? "Give or remove Admin and Super admin roles. Select User to remove elevated access."
-            : "View registered app users and their roles. Only a super admin can change roles."}
-        </p>
-        <p className="muted">
-          Your own role cannot be changed here. Private habits and progress
-          remain private.
-        </p>
-        <label>
-          Search users
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Name, email or user ID"
-          />
-        </label>
-        {(error || users.error || roles.error) && (
-          <p className="banner error" role="alert">
-            {error || users.error || roles.error}
-          </p>
-        )}
-        {!online && <p role="status">Reconnect to change roles.</p>}
-        {users.loading || roles.loading ? (
-          <p role="status">Loading users…</p>
-        ) : (
-          <>
-            <p className="muted">
-              {filtered.length} of {users.rows.length} users
-            </p>
-            <div className="admin-users">
-              {filtered.map((row) => (
-                <article className="admin-user" key={row.id}>
-                  <div className="admin-user-copy">
-                    <h3>
-                      {row.displayName || "App user"}
-                      {row.id === user.uid ? " (you)" : ""}
-                    </h3>
-                    {row.email && <p>{row.email}</p>}
-                    <small className="muted">{row.id}</small>
-                  </div>
-                  {isSuperAdmin ? (
-                    <label className="admin-role">
-                      Role
-                      <select
-                        aria-label={`Role for ${row.displayName || row.id}`}
-                        value={roleById[row.id] || "user"}
-                        disabled={
-                          !!busy ||
-                          !online ||
-                          row.id === user.uid ||
-                          !!roles.error
-                        }
-                        onChange={(e) => changeRole(row.id, e.target.value)}
-                      >
-                        {Object.entries(ROLE_LABELS).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                      {busy === row.id && <small role="status">Saving…</small>}
-                    </label>
-                  ) : (
-                    <span className="role-badge">
-                      {ROLE_LABELS[roleById[row.id]] || "User"}
-                    </span>
-                  )}
-                </article>
-              ))}
-              {!filtered.length && !users.error && <p>No users found.</p>}
-            </div>
-          </>
-        )}
-      </div>
-    </>
+    </div>
   );
 }
 

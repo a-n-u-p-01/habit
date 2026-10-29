@@ -4,11 +4,8 @@ import { db } from "./firebase";
 import { useApp } from "./store";
 
 const AccessContext = createContext(null);
-export const ROLE_LABELS = {
-  user: "User",
-  admin: "Admin",
-  super_admin: "Super admin",
-};
+export { ROLE_LABELS } from "./access-labels.js";
+import { ROLE_LABELS } from "./access-labels.js";
 
 export function AccessProvider({ children }) {
   const { user, authReady } = useApp();

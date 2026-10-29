@@ -1,5 +1,7 @@
 # Compact habit cards and confirmation modal
 
+Release note: this describes the earlier card-only release. Privacy work has now been resumed and merged without changing these compact-card controls; see PRIVACY_UPDATE.md for the current identity, cache and rules changes.
+
 This update starts from the last delivered past-completion version. The unfinished privacy/name/profile/cache changes are paused separately and are NOT included here. My space, sign-in behavior, Firebase configuration and security rules remain exactly as in that delivered version.
 
 ## Today card flow

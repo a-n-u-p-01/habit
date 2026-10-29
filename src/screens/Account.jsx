@@ -1,5 +1,5 @@
+import { ProfileNameForm } from "../ProfileName";
 import { useAccess, ROLE_LABELS } from "../access";
-import { HabitOrderList } from "../HabitOrderList";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   BrowserRouter,
@@ -112,39 +112,9 @@ export function Profile() {
     ]),
   ];
   const stats = statistics(app.tasks, app.progress, allKeys);
-  const active = app.tasks.filter((t) => !t.deletedDay);
-  async function toggle(t) {
-    const active = t.active === false;
-    const history = (t.scheduleHistory || []).filter(
-      (h) => h.from !== dateKey(),
-    );
-    history.push({ from: dateKey(), weekdays: t.weekdays, active });
-    try {
-      await app.persist("tasks", t.id, {
-        ...t,
-        active,
-        scheduleHistory: history,
-      });
-    } catch {}
-  }
-  async function remove(t) {
-    if (
-      !confirm(
-        "Delete this habit from future days? Your past wins and sessions will remain.",
-      )
-    )
-      return;
-    try {
-      await app.persist("tasks", t.id, {
-        ...t,
-        deletedDay: dateKey(),
-        active: false,
-      });
-    } catch {}
-  }
   return (
     <>
-      <PageTitle eyebrow="THIS IS YOUR OWN JOURNEY" title="Your space." />
+      <PageTitle eyebrow="THIS IS YOUR OWN JOURNEY" title="Your corner." />
       <section className="panel profile-card">
         <Avatar />
         <h2>{app.user?.displayName || "One small step at a time."}</h2>
@@ -153,7 +123,9 @@ export function Profile() {
             ? "Your wins, safely in your own space."
             : "Your data is saved on this device. Sign in for cloud sync."}
         </p>
-        {app.user && access.ready && <span className="role-badge">{ROLE_LABELS[access.role]}</span>}
+        {app.user && access.ready && (
+          <span className="role-badge">{ROLE_LABELS[access.role]}</span>
+        )}
         {!app.user && (
           <button className="button" onClick={() => app.login()}>
             Continue with Google
@@ -168,6 +140,12 @@ export function Profile() {
           ]}
         />
       </section>
+      {app.user && (
+        <section className="panel form-section profile-name-section">
+          <h2>Your app identity</h2>
+          <ProfileNameForm key={app.user.uid} />
+        </section>
+      )}
       {app.user && app.guestCount > 0 && (
         <div className="banner">
           You have {app.guestCount} records on this device that haven't been
@@ -181,44 +159,23 @@ export function Profile() {
           </button>
         </div>
       )}
-      <div className="profile-layout">
-        <section>
-          <div className="section-heading">
-            <h2>My habits</h2>
-            <Link className="text-button" to="/tasks/new">
-              <Plus size={16} />
-              New
-            </Link>
-          </div>
-          {active.length > 0 && (
-            <HabitOrderList
-              habits={active}
-              onPause={toggle}
-              onRemove={remove}
-            />
-          )}
-          {!active.length && (
-            <Empty
-              title="Start smaller than you think"
-              action={
-                <Link className="button" to="/tasks/new">
-                  Create a habit
-                </Link>
-              }
-            >
-              One achievable minimum is a great beginning.
-            </Empty>
-          )}
-        </section>
+      <div className="profile-layout profile-account-layout">
         <section className="panel profile-menu">
           {[
+            [Target, "My habits", "/habits"],
+            [BarChart3, "My progress", "/analytics"],
             [Layers, "My Templates", "/templates?tab=mine"],
             [Bookmark, "Saved Templates", "/templates?tab=saved"],
             [Sparkles, "Weekly Review", "/review"],
             [Settings, "Settings & Privacy", "/settings"],
             [HelpCircle, "Help & Philosophy", "/help"],
             [HelpCircle, "Report or suggest", "/feedback"],
-            ...(access.isStaff ? [[Shield, "Users & roles", "/admin/users"], [BookOpen, "Reports & suggestions", "/admin/feedback"]] : []),
+            ...(access.isStaff
+              ? [
+                  [Shield, "Users", "/admin/users"],
+                  [BookOpen, "Reports & suggestions", "/admin/feedback"],
+                ]
+              : []),
           ].map(([Icon, label, to]) => (
             <Link key={to} to={to}>
               <Icon size={19} />
@@ -287,7 +244,7 @@ export function SettingsPage() {
     <>
       <PageTitle
         back="/profile"
-        eyebrow="MAKE YOUR SPACE FEEL LIKE YOU"
+        eyebrow="MAKE YOUR CORNER FEEL LIKE YOU"
         title="Settings & privacy."
       />
       <div className="settings-grid">
@@ -349,15 +306,42 @@ export function SettingsPage() {
             <Shield size={21} /> Your data belongs to you
           </h2>
           <p>
-            Google provides your name, email and photo. Admins can view your app profile and role. Private habits, progress, and
-            reflections stay inside your Firebase user boundary. Published
-            templates, reviews, and adoption identifiers are public. Reports and suggestions are visible only to their sender and the admin team.
+            Google handles sign-in and Firebase Authentication may retain your
+            Google account details. The app uses only your chosen app name and a
+            neutral avatar. Your private habits, progress, templates and
+            reflections remain owner-only. Admins see chosen app profiles and
+            reports, not your private habits.
+          </p>
+          <p>
+            Publishing a template or posting a review makes its content and your
+            app name public. Public author IDs remain visible for ownership; an
+            app name is not anonymity. Using a template does not publish a usage
+            identifier. Reports are private to you and the admin team.
           </p>
           <p className="muted">
-            On shared devices, sign out and use a private browser window. This
-            app caches cloud data locally for offline use. Clear site data to
-            remove that cache.
+            Signed-in Firestore data is kept in this tab's memory, not a
+            persistent offline database. Reconnect and sync before closing the
+            tab or signing out. Device-only guest data still stays in this
+            browser until cleared or imported. Use a private window on shared
+            devices.
           </p>
+          {app.oldCacheCleared === false && (
+            <div className="banner" role="status">
+              <p>
+                An older offline cache may still exist. It is not deleted
+                automatically because it might contain unsynced work. Sync and
+                close older tabs first.
+              </p>
+              <button
+                className="button secondary"
+                onClick={() =>
+                  app.removeLegacyCache().catch((e) => app.setError(e.message))
+                }
+              >
+                Remove older cloud cache
+              </button>
+            </div>
+          )}
           <button className="button secondary" onClick={download}>
             <Download size={17} />
             Export my data
@@ -456,9 +440,9 @@ export function Help() {
         </p>
         <h3>Can I change my mind?</h3>
         <p>
-          Yes. Pause, edit or remove habits in My space. Existing daily sessions
-          keep their original requirements. Schedule changes affect today and
-          future days; old schedule versions are retained.
+          Yes. Pause, edit or remove habits in My habits. Existing daily
+          sessions keep their original requirements. Schedule changes affect
+          today and future days; old schedule versions are retained.
         </p>
         <h3>What if I miss a day?</h3>
         <p>
@@ -469,16 +453,19 @@ export function Help() {
         <h3>Offline & device data</h3>
         <p>
           Guest data is stored in this browser. Google sign-in enables Firestore
-          sync. Import device data explicitly in My space after signing in.
-          Cached cloud sessions can be continued offline. Starting a new cloud
-          session needs a connection.
+          sync. Import device data explicitly in Your corner after signing in.
+          Sessions loaded in the current tab can be continued offline. Sync
+          before closing the tab; cloud data is not kept in a persistent offline
+          cache. Starting a new cloud session needs a connection.
         </p>
         <h3>Feedback</h3>
         <p>
           Report a problem or suggest an improvement directly to the admin team.
           Sign in to send feedback and follow its status.
         </p>
-        <Link className="button secondary" to="/feedback">Report or suggest</Link>
+        <Link className="button secondary" to="/feedback">
+          Report or suggest
+        </Link>
         <Link className="button" to="/">
           Back to today
           <ArrowRight size={17} />

@@ -1,3 +1,5 @@
+import { MyHabits } from "./screens/MyHabits";
+import { NameSetup } from "./ProfileName";
 import {
   cx,
   CategoryIcon,
@@ -303,6 +305,33 @@ function Shell() {
         <p>Finding your path…</p>
       </main>
     );
+  if (app.user && (!app.profileReady || app.profileError))
+    return (
+      <main className="name-setup">
+        <section className="panel form-section">
+          <h1>
+            {app.profileError
+              ? "Your profile needs a connection"
+              : "Opening your corner…"}
+          </h1>
+          <p role={app.profileError ? "alert" : "status"}>
+            {app.profileError ||
+              (!app.online
+                ? "Reconnect to load your private profile."
+                : "Loading your chosen app identity…")}
+          </p>
+          {app.profileError && (
+            <button className="button" onClick={() => window.location.reload()}>
+              Try again
+            </button>
+          )}
+          <button className="text-button" onClick={() => app.logout()}>
+            Sign out
+          </button>
+        </section>
+      </main>
+    );
+  if (app.user && !app.user.nameConfirmed) return <NameSetup />;
   if (location.pathname === "/welcome")
     return (
       <>
@@ -330,14 +359,15 @@ function Shell() {
         <nav>
           {[
             [Home, "Today", "/"],
+            [Target, "My habits", "/habits"],
             [Calendar, "This week", "/week"],
             [BarChart3, "My progress", "/analytics"],
             [Layers, "Templates", "/templates"],
-            [User, "My space", "/profile"],
+            [User, "Your corner", "/profile"],
             [HelpCircle, "Report or suggest", "/feedback"],
             ...(access.isStaff
               ? [
-                  [Shield, "Users & roles", "/admin/users"],
+                  [Shield, "Users", "/admin/users"],
                   [BookOpen, "Feedback inbox", "/admin/feedback"],
                 ]
               : []),
@@ -360,8 +390,8 @@ function Shell() {
           <Link className="account" to="/profile">
             <Avatar />
             <span>
-              {app.user?.displayName?.split(" ")[0] || "Your own journey"}
-              <small>{app.user ? "Personal space" : "On this device"}</small>
+              {app.user?.displayName || "Your own journey"}
+              <small>{app.user ? "Your corner" : "On this device"}</small>
             </span>
             <Settings size={17} />
           </Link>
@@ -404,8 +434,9 @@ function Shell() {
         </header>
         {!app.online && (
           <div className="banner">
-            You're offline. Cached habits are available; new cloud habit
-            sessions need a connection. Changes sync when you reconnect.
+            You're offline. Habits already loaded in this tab are available; new
+            cloud habit sessions need a connection. Changes sync when you
+            reconnect. Keep this tab open until they sync.
           </div>
         )}
         {app.error && (
@@ -453,6 +484,7 @@ function Shell() {
               />
               <Route path="/templates/:id" element={<TemplateDetail />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/habits" element={<MyHabits />} />
               <Route path="/review" element={<WeeklyReview />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/help" element={<Help />} />
@@ -498,10 +530,10 @@ function Shell() {
       <nav className="bottom-nav">
         {[
           [Home, "Today", "/"],
-          [BarChart3, "Progress", "/analytics"],
+          [Target, "My habits", "/habits"],
           [Plus, "New", "/tasks/new"],
           [Layers, "Templates", "/templates"],
-          [User, "My space", "/profile"],
+          [User, "Your corner", "/profile"],
         ].map(([Icon, label, path]) => (
           <NavLink
             key={path}

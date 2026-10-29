@@ -1,3 +1,4 @@
+import { isTaskOnly, taskText } from "../domain";
 import { recordHabitDefinition } from "../history";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
@@ -155,7 +156,10 @@ export function TaskEditor({ templateMode = false }) {
           ...source,
           name: source.name,
           levels: source.levels.map((rows) =>
-            rows.map((r) => ({ ...r, id: id ? r.id : crypto.randomUUID() })),
+            rows.map((r) => ({
+              id: id ? r.id : crypto.randomUUID(),
+              label: isTaskOnly(r) ? r.label : taskText(r),
+            })),
           ),
         }
       : {
@@ -176,7 +180,7 @@ export function TaskEditor({ templateMode = false }) {
       <Empty
         title="Habit not found"
         action={
-          <Link className="button" to="/profile">
+          <Link className="button" to="/habits">
             My habits
           </Link>
         }
@@ -203,9 +207,7 @@ export function TaskEditor({ templateMode = false }) {
       return;
     }
     if (!confirmed) {
-      setError(
-        "Confirm that T2 and T3 describe additional effort, not cumulative totals.",
-      );
+      setError("Confirm T1 is manageable and T2/T3 add extra tasks.");
       return;
     }
     saveLock.current = true;
@@ -228,12 +230,7 @@ export function TaskEditor({ templateMode = false }) {
         category: form.category,
         weekdays: form.weekdays,
         levels: form.levels.map((rows) =>
-          rows.map((r) => ({
-            ...r,
-            label: r.label.trim(),
-            unit: r.unit.trim(),
-            amount: Number(r.amount),
-          })),
+          rows.map((r) => ({ id: r.id, label: r.label.trim() })),
         ),
         active: form.active !== false,
         createdDay: (id ? source?.createdDay : null) || key,
@@ -275,7 +272,7 @@ export function TaskEditor({ templateMode = false }) {
                 : "Habit created. A private copy is ready in My Templates."
               : "A small promise, ready for you.",
       );
-      navigate(templateMode ? "/templates?tab=mine" : "/");
+      navigate(templateMode ? "/templates?tab=mine" : id ? "/habits" : "/");
     } catch (e) {
       setError(e.message);
     } finally {
@@ -290,7 +287,7 @@ export function TaskEditor({ templateMode = false }) {
           templateMode || (!id && source)
             ? "/templates"
             : id
-              ? "/profile"
+              ? "/habits"
               : "/tasks/new"
         }
         eyebrow={templateMode ? "YOUR OWN BLUEPRINT" : "MAKE IT ACHIEVABLE"}
@@ -298,21 +295,20 @@ export function TaskEditor({ templateMode = false }) {
       />
       {!templateMode && !id && !source && (
         <p className="manual-template-note">
-          Saving this habit also saves a private reusable copy in My Templates.
-          It will not be published.
+          Also saved privately in My Templates.
         </p>
       )}
-      <form className="editor-layout" onSubmit={save}>
+      <form className="editor-layout task-only-editor" onSubmit={save}>
         <div className="editor-main">
           <section className="panel form-section">
-            <h2>A small promise to yourself</h2>
+            <h2>{templateMode ? "Your template" : "Your habit"}</h2>
             <label>
-              Habit name
+              {templateMode ? "Template name" : "Habit name"}
               <input
                 maxLength={80}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Move a little"
+                placeholder="e.g. Read daily"
                 required
               />
             </label>
@@ -370,59 +366,41 @@ export function TaskEditor({ templateMode = false }) {
                   <h2>{LEVELS[i]}</h2>
                   <p>
                     {i === 0
-                      ? "Small enough for a hard day. This earns your T1 badge."
-                      : `Only additional effort after T${i}. Always optional.`}
+                      ? "Easy tasks for a busy day. Complete all T1 tasks to win this habit."
+                      : i === 1
+                        ? "Add useful tasks after T1. Optional each day."
+                        : "Add a stretch after T2, only when you have time or energy."}
                   </p>
                 </div>
               </div>
               {rows.map((r, ri) => (
                 <div className="requirement-editor" key={r.id}>
                   <label className="requirement-label">
-                    {i > 0 ? "Additional activity" : "Activity"}
+                    Task
                     <input
-                      aria-label={`T${i + 1} activity ${ri + 1}`}
-                      maxLength={80}
+                      id={`task-${r.id}`}
+                      disabled={saving}
+                      aria-label={`T${i + 1} task ${ri + 1}`}
+                      maxLength={160}
                       value={r.label}
                       onChange={(e) =>
                         updateRequirement(i, ri, { label: e.target.value })
                       }
-                      placeholder={i === 0 ? "Push-ups" : "More push-ups"}
-                      required
-                    />
-                  </label>
-                  <label>
-                    Amount
-                    <input
-                      aria-label={`T${i + 1} amount ${ri + 1}`}
-                      type="number"
-                      min="0.01"
-                      max="100000"
-                      step="0.01"
-                      value={r.amount}
-                      onChange={(e) =>
-                        updateRequirement(i, ri, { amount: e.target.value })
+                      placeholder={
+                        i === 0
+                          ? "e.g. Read 1 page"
+                          : i === 1
+                            ? "e.g. Read 2 more pages"
+                            : "e.g. Write a short summary"
                       }
-                      required
-                    />
-                  </label>
-                  <label>
-                    Unit
-                    <input
-                      aria-label={`T${i + 1} unit ${ri + 1}`}
-                      maxLength={24}
-                      value={r.unit}
-                      onChange={(e) =>
-                        updateRequirement(i, ri, { unit: e.target.value })
-                      }
-                      placeholder="reps"
                       required
                     />
                   </label>
                   <button
-                    disabled={rows.length === 1}
+                    disabled={saving || rows.length === 1}
                     type="button"
                     className="icon-button danger"
-                    aria-label={`Remove T${i + 1} requirement ${ri + 1}`}
+                    aria-label={`Remove T${i + 1} task ${ri + 1}`}
                     onClick={() =>
                       setForm((f) => ({
                         ...f,
@@ -438,32 +416,38 @@ export function TaskEditor({ templateMode = false }) {
               ))}
               <button
                 type="button"
-                disabled={rows.length >= 4}
+                disabled={saving}
                 className="text-button"
-                onClick={() =>
+                aria-label={`Add T${i + 1} task`}
+                onClick={() => {
+                  const row = newRequirement();
                   setForm((f) => ({
                     ...f,
                     levels: f.levels.map((rr, j) =>
-                      i === j ? [...rr, newRequirement()] : rr,
+                      i === j ? [...rr, row] : rr,
                     ),
-                  }))
-                }
+                  }));
+                  requestAnimationFrame(() =>
+                    document.getElementById(`task-${row.id}`)?.focus(),
+                  );
+                }}
               >
                 <Plus size={16} />
-                Add requirement
+                Add task
               </button>
             </section>
           ))}
+          <p className="muted task-guidance-note">
+            Keep T1 short. Write actions you can finish, such as “Read 2 pages”.
+          </p>
           <label className="confirm-row">
             <input
               type="checkbox"
+              disabled={saving}
               checked={confirmed}
               onChange={(e) => setConfirmed(e.target.checked)}
             />
-            <span>
-              T2 and T3 are additional amounts, not totals. My T1 is achievable
-              on a difficult day.
-            </span>
+            <span>T1 is manageable. T2 and T3 add extra tasks.</span>
           </label>
           {error && (
             <p role="alert" className="inline-error">
@@ -491,9 +475,7 @@ export function TaskEditor({ templateMode = false }) {
             <span className="eyebrow">YOUR PROGRESSION</span>
             <h2>{form.name || "One small promise"}</h2>
             <Progression task={form} />
-            <p className="muted">
-              T1 is the destination. T2 and T3 are the scenic route.
-            </p>
+            <p className="muted">T1 is enough. Extras are optional.</p>
           </div>
         </aside>
       </form>
@@ -637,8 +619,12 @@ export function TaskFlow() {
                     </span>
                     <span>
                       {p.checks[r.id]
-                        ? `${r.amount}/${r.amount}`
-                        : `0/${r.amount}`}
+                        ? isTaskOnly(r)
+                          ? "Done"
+                          : `${r.amount}/${r.amount}`
+                        : isTaskOnly(r)
+                          ? "To do"
+                          : `0/${r.amount}`}
                     </span>
                   </button>
                 ))}
@@ -647,7 +633,7 @@ export function TaskFlow() {
                 <Sparkles size={18} />
                 <p>
                   {level === 1
-                    ? "Keep it easy. Take short breaks if you need to. Mark each requirement once you have done it."
+                    ? "Keep it easy. Take short breaks if you need to. Mark each task after doing it."
                     : `Your T1 badge is already achieved. These are extras, never obligations.`}
                 </p>
               </div>
@@ -681,7 +667,10 @@ export function TaskFlow() {
                     : "You showed up. You went all the way."}
               </p>
               <Stats
-                items={rows.map((r) => [`${r.amount} ${r.unit}`, r.label])}
+                items={rows.map((r) => [
+                  isTaskOnly(r) ? "Done" : `${r.amount} ${r.unit}`,
+                  r.label,
+                ])}
               />
               {a < 3 && (
                 <button
@@ -720,14 +709,7 @@ export function TaskFlow() {
                     <Tier level={i + 1} />
                     <div>
                       <h3>T{i + 1} badge achieved</h3>
-                      <p>
-                        {rr
-                          .map(
-                            (r) =>
-                              `${i > 0 ? "+ " : ""}${r.amount} ${r.unit} ${r.label}`,
-                          )
-                          .join(" · ")}
-                      </p>
+                      <p>{rr.map((r) => taskText(r, i > 0)).join(" · ")}</p>
                     </div>
                     <Check size={18} />
                   </div>
@@ -736,7 +718,7 @@ export function TaskFlow() {
               <h3>Total work today</h3>
               <Stats
                 items={totalWork(p).map((r) => [
-                  `${r.amount} ${r.unit}`,
+                  isTaskOnly(r) ? "Done" : `${r.amount} ${r.unit}`,
                   r.label,
                 ])}
               />
