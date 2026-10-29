@@ -1,3 +1,4 @@
+import { GoogleIcon } from "../GoogleIcon";
 import { FeedbackInbox } from "../FeedbackInbox";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -283,7 +284,11 @@ export function FeedbackPage({
           <p>
             Sign in to report a problem or send a suggestion to the admin team.
           </p>
-          <button className="button" onClick={() => app.login()}>
+          <button
+            className="button google-signin-button"
+            onClick={() => app.login()}
+          >
+            <GoogleIcon />
             Continue with Google
           </button>
         </section>

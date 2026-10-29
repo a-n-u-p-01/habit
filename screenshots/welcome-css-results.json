@@ -1,0 +1,257 @@
+{
+  "scope": "Isolated Chromium CSS fixtures with representative three-step markup and actual provided landscape image; not full React/Google OAuth flow",
+  "results": [
+    {
+      "step": 1,
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 600,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 600,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 1024,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 1024,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 1,
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 600,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 600,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 1024,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 1024,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 2,
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 280,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 280,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 320,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 320,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 600,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 600,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 760,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 760,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 1024,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 1024,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "step": 3,
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    }
+  ]
+}

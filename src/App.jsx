@@ -1,3 +1,5 @@
+import { WelcomeOnboarding } from "./WelcomeOnboarding";
+import { completeWelcome, WELCOME_SIGNIN_KEY } from "./welcome.js";
 import { AppLoading, ContentLoading, StartupRecovery } from "./LoadingStates";
 import { startupPhase } from "./startup.js";
 import { LegacyRedirect } from "./LegacyRedirect";
@@ -103,195 +105,10 @@ import {
   progressId,
 } from "./domain";
 
-function Onboarding() {
-  const { login, user } = useApp();
-  const navigate = useNavigate();
-  const [step, setStep] = useState(0),
-    [example, setExample] = useState(0);
-  function finish() {
-    localStorage.setItem("win-onboarded", "1");
-    navigate("/");
-  }
-  return (
-    <main className="onboarding">
-      <div className="onboard-art">
-        <div className="brand">
-          <Mountain /> WIN TODAY
-        </div>
-        <div>
-          <span className="eyebrow">A little is everything.</span>
-          <h1>
-            Small wins.
-            <br />A better you.
-          </h1>
-          <p>
-            You don't need to finish everything.
-            <br />
-            Just win today.
-          </p>
-        </div>
-        <span className="photo-credit">Your pace. Your path.</span>
-      </div>
-      <section className="onboard-copy">
-        <span className="eyebrow">YOUR NEXT CHAPTER · 0{step + 1} / 04</span>
-        {step === 0 ? (
-          <>
-            <h2>
-              Keep the promise.
-              <br />
-              <em>Not the pressure.</em>
-            </h2>
-            <p>
-              Start realistically. Stay consistent. Become the person you want
-              to be, one small win at a time.
-            </p>
-            <div className="principle">
-              <Check /> Start small enough to show up.
-              <br />
-            </div>
-            <div className="principle">
-              <Check /> A little progress still counts.
-            </div>
-          </>
-        ) : step === 1 ? (
-          <>
-            <h2>
-              Three levels.
-              <br />
-              One continuous journey.
-            </h2>
-            <Progression
-              task={{
-                levels: [
-                  [
-                    {
-                      id: "a",
-                      amount: 1,
-                      unit: "small step",
-                      label: "Keep your habit alive.",
-                    },
-                  ],
-                  [
-                    {
-                      id: "b",
-                      amount: 1,
-                      unit: "extra step",
-                      label: "Only if you have the energy.",
-                    },
-                  ],
-                  [
-                    {
-                      id: "c",
-                      amount: 1,
-                      unit: "final step",
-                      label: "Go further, on your terms.",
-                    },
-                  ],
-                ],
-              }}
-            />
-            <p>T1 is the win. T2 and T3 are always optional.</p>
-          </>
-        ) : step === 2 ? (
-          <>
-            <h2>
-              Meet your
-              <br />
-              minimum win.
-            </h2>
-            <div className="tabs">
-              {[0, 1, 2].map((n) => (
-                <button
-                  className={example === n ? "selected" : ""}
-                  onClick={() => setExample(n)}
-                  key={n}
-                >
-                  T{n + 1}
-                </button>
-              ))}
-            </div>
-            <div className="panel example">
-              <Tier level={example + 1} />
-              <h3>{LEVELS[example]}</h3>
-              {exemplar.levels[example].map((r) => (
-                <p key={r.id}>
-                  <RequirementText r={r} additional={example > 0} />
-                </p>
-              ))}
-            </div>
-            <p>
-              {example === 0
-                ? "Do this to achieve your T1 badge. Anything more is optional."
-                : `These are additional sets, not totals. You've already earned T${example}.`}
-            </p>
-          </>
-        ) : (
-          <>
-            <h2>
-              A fresh start.
-              <br />
-              Every single day.
-            </h2>
-            <p>
-              Save your wins across devices with Google, or start on this
-              device. No leaderboard. No guilt. Just you, showing up.
-            </p>
-            <button
-              className="button google"
-              onClick={async () => {
-                await login();
-                if (authenticated()) finish();
-              }}
-            >
-              Continue with Google <ArrowRight size={18} />
-            </button>
-            <button className="text-button" onClick={() => login(true)}>
-              Use redirect sign-in instead
-            </button>
-            <small className="muted">
-              Google sign-in requires the Firebase project to have Google
-              enabled and this domain authorized.
-            </small>
-          </>
-        )}
-        <div className="onboard-footer">
-          <div className="dots">
-            {[0, 1, 2, 3].map((n) => (
-              <button
-                key={n}
-                aria-label={`Step ${n + 1}`}
-                className={step === n ? "active" : ""}
-                onClick={() => setStep(n)}
-              />
-            ))}
-          </div>
-          <button
-            className="button"
-            onClick={() => (step < 3 ? setStep(step + 1) : finish())}
-          >
-            {step === 3
-              ? user
-                ? "Enter my day"
-                : "Start on this device"
-              : step === 0
-                ? "Let's begin"
-                : "Next"}
-            <ArrowRight size={18} />
-          </button>
-          <button className="text-button" onClick={finish}>
-            Skip for now
-          </button>
-        </div>
-      </section>
-    </main>
-  );
-}
-// Auth state is observed by the provider; this check only handles the post-popup navigation.
-import { auth } from "./firebase";
-const authenticated = () => !!auth.currentUser;
 function Shell() {
   const app = useApp(),
     location = useLocation();
+  const navigate = useNavigate();
   const access = useAccess();
   const [menu, setMenu] = useState(false);
   useEffect(() => {
@@ -303,6 +120,12 @@ function Shell() {
     const timer = setTimeout(() => app.setNotice(""), 5000);
     return () => clearTimeout(timer);
   }, [app.notice]);
+  useEffect(() => {
+    if (app.user && sessionStorage.getItem(WELCOME_SIGNIN_KEY) === "1") {
+      completeWelcome(localStorage, sessionStorage);
+      navigate("/", { replace: true });
+    }
+  }, [app.user?.uid, navigate]);
   const startup = startupPhase(app);
   if (startup === "loading")
     return (
@@ -322,20 +145,7 @@ function Shell() {
       />
     );
   if (startup === "name-setup") return <NameSetup />;
-  if (location.pathname === "/welcome")
-    return (
-      <>
-        <Onboarding />
-        {app.error && (
-          <div className="toast error" role="alert">
-            {app.error}
-            <button aria-label="Dismiss error" onClick={() => app.setError("")}>
-              <X size={18} />
-            </button>
-          </div>
-        )}
-      </>
-    );
+  if (location.pathname === "/welcome") return <WelcomeOnboarding />;
   return (
     <div className="app-shell">
       <aside className={cx("sidebar", menu && "open")}>

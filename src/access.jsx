@@ -1,3 +1,4 @@
+import { GoogleIcon } from "./GoogleIcon";
 import { AppLoading } from "./LoadingStates";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
@@ -72,7 +73,8 @@ export function StaffOnly({ children }) {
       <section className="panel form-section">
         <h1>Sign in required</h1>
         <p>Only admins and super admins can access this page.</p>
-        <button className="button" onClick={() => login()}>
+        <button className="button google-signin-button" onClick={() => login()}>
+          <GoogleIcon />
           Continue with Google
         </button>
       </section>

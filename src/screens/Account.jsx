@@ -1,3 +1,4 @@
+import { GoogleIcon } from "../GoogleIcon";
 import React, { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
@@ -72,10 +73,11 @@ export function SettingsPage() {
           ) : (
             <div className="settings-login">
               <button
-                className="button"
+                className="button google-signin-button"
                 disabled={!!busy || !app.online}
                 onClick={() => perform("login", () => app.login())}
               >
+                <GoogleIcon />
                 Continue with Google
               </button>
             </div>

@@ -1,3 +1,4 @@
+import { profileSaveMessage } from "./profile.js";
 import React, { useState } from "react";
 import { Mountain, Shield } from "lucide-react";
 import { useApp } from "./store";
@@ -8,11 +9,13 @@ export function ProfileNameForm({ setup = false, compact = false }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [errorDetails, setErrorDetails] = useState("");
   async function submit(event) {
     event.preventDefault();
     if (busy) return;
     setBusy(true);
     setError("");
+    setErrorDetails("");
     setMessage("");
     try {
       const result = await app.saveProfileName(name);
@@ -23,7 +26,8 @@ export function ProfileNameForm({ setup = false, compact = false }) {
       app.setNotice(text);
       setMessage(text);
     } catch (e) {
-      setError(e.message);
+      setError(profileSaveMessage(e));
+      setErrorDetails(e.code ? `${e.code}: ${e.message || ""}` : "");
     } finally {
       setBusy(false);
     }
@@ -47,7 +51,7 @@ export function ProfileNameForm({ setup = false, compact = false }) {
           placeholder="Choose a nickname"
         />
       </label>
-      {compact ? (
+      {setup ? null : compact ? (
         <p className="muted">
           This name appears on templates and reviews you share.
         </p>
@@ -71,9 +75,15 @@ export function ProfileNameForm({ setup = false, compact = false }) {
           {error}
         </p>
       )}
+      {errorDetails && (
+        <details className="profile-save-error-details">
+          <summary>Error details</summary>
+          <p>{errorDetails}</p>
+        </details>
+      )}
       {message && <p role="status">{message}</p>}
       <button className="button" disabled={busy || !app.online}>
-        {busy ? "Saving…" : setup ? "Continue with this name" : "Save app name"}
+        {busy ? "Saving…" : setup ? "Continue" : "Save app name"}
       </button>
       {!app.online && <p role="status">Reconnect to save your app name.</p>}
     </form>
@@ -88,16 +98,11 @@ export function NameSetup() {
         <div className="brand">
           <Mountain /> WIN TODAY
         </div>
-        <span className="eyebrow">YOUR JOURNEY. YOUR CHOICE.</span>
-        <h1>What should we call you?</h1>
-        <p>
-          Choose the name you want to use here. Your Google name and photo will
-          not be used as your app identity. Existing habits stay unchanged.
-        </p>
+        <h1>Set your app name</h1>
+        <p>This name appears on templates and reviews you share.</p>
         <ProfileNameForm key={app.user.uid} setup />
         <p className="name-privacy-note">
-          <Shield size={16} /> Your habits stay private. Templates and reviews
-          are public only when you choose to share them.
+          <Shield size={16} /> Your habits and progress are private.
         </p>
         <button className="text-button" onClick={() => app.logout()}>
           Sign out
