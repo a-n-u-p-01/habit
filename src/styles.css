@@ -9639,10 +9639,11 @@ input[type="checkbox"] {
   padding: 38px 42px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   color: #fff;
   background:
-    linear-gradient(180deg, #07142138 0%, #07142138 25%, #071421d9 100%),
+    linear-gradient(90deg, #0613229e 0%, #06132245 100%),
+    linear-gradient(180deg, #06132238 0%, #06132270 52%, #061322ab 100%),
     url("/landscape.jpg") center/cover;
 }
 .welcome-brand {
@@ -9658,8 +9659,9 @@ input[type="checkbox"] {
   flex-shrink: 0;
 }
 .welcome-hero-copy {
-  margin: 60px 0 24px;
-  max-width: 450px;
+  margin: clamp(56px, 11vh, 118px) 0 32px;
+  max-width: 100%;
+  min-width: 0;
 }
 .welcome-hero-copy > span {
   display: block;
@@ -9948,6 +9950,7 @@ input[type="checkbox"] {
 @media (max-width: 760px) {
   .welcome-screen {
     grid-template-columns: minmax(0, 1fr);
+    align-content: start;
   }
   .welcome-hero {
     min-height: 0;
@@ -10098,5 +10101,11 @@ input[type="checkbox"] {
   }
   .name-setup .profile-name-form input {
     font-size: 16px;
+  }
+}
+
+@media (min-width: 761px) and (max-height: 620px) {
+  .welcome-hero-copy {
+    margin-top: 42px;
   }
 }
