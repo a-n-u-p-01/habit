@@ -1,4 +1,9 @@
-import { normalizeAppName, confirmedAppName } from "./profile";
+import { googleSignIn, googleSignInMessage } from "./google-signin.js";
+import {
+  normalizeAppName,
+  confirmedAppName,
+  buildProfilePayload,
+} from "./profile";
 import { preparePastCompletion } from "./history";
 import React, {
   createContext,
@@ -82,6 +87,7 @@ export function AppProvider({ children }) {
     [notice, setNotice] = useState(""),
     [online, setOnline] = useState(navigator.onLine),
     [pending, setPending] = useState(false);
+  const loginLock = useRef(false);
   const [dataOwner, setDataOwner] = useState(null);
   const [profileState, setProfileState] = useState({
     uid: null,
@@ -184,7 +190,7 @@ export function AppProvider({ children }) {
     [],
   );
   useEffect(() => {
-    getRedirectResult(auth).catch((e) => setError(e.message));
+    getRedirectResult(auth).catch((e) => setError(googleSignInMessage(e.code)));
     const yes = () => setOnline(true),
       no = () => setOnline(false);
     window.addEventListener("online", yes);
@@ -453,14 +459,12 @@ export function AppProvider({ children }) {
       const existing = await transaction.get(reference);
       transaction.set(
         reference,
-        {
-          displayName: name,
-          nameConfirmed: true,
+        buildProfilePayload({
+          name,
           photoURL: providerPhoto,
-          updatedAt: serverTimestamp(),
-          ...(!existing.exists() ? { createdAt: serverTimestamp() } : {}),
-        },
-        { merge: true },
+          existing: existing.exists() ? existing.data() : null,
+          timestamp: serverTimestamp(),
+        }),
       );
     });
     // These are only the user's own existing records, never other people's
@@ -538,12 +542,28 @@ export function AppProvider({ children }) {
     }
   }
   async function login(redirect = false) {
+    if (loginLock.current) return { status: "busy" };
+    loginLock.current = true;
+    let redirecting = false;
     setError("");
     try {
-      if (redirect) await signInWithRedirect(auth, google);
-      else await signInWithPopup(auth, google);
-    } catch (e) {
-      setError(`Google sign-in: ${e.message}`);
+      let result;
+      if (redirect) {
+        await signInWithRedirect(auth, google);
+        result = { status: "redirecting" };
+      } else {
+        result = await googleSignIn({
+          popup: () => signInWithPopup(auth, google),
+          redirect: () => signInWithRedirect(auth, google),
+        });
+      }
+      redirecting = result.status === "redirecting";
+      return result;
+    } catch (error) {
+      setError(googleSignInMessage(error.code));
+      return { status: "error" };
+    } finally {
+      if (!redirecting) loginLock.current = false;
     }
   }
   async function begin(task, key = dateKey()) {

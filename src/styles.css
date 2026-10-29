@@ -9624,3 +9624,479 @@ input[type="checkbox"] {
     animation: none;
   }
 }
+
+/* First run: habit-building context, a concrete example, then one clear choice. */
+.welcome-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  background: var(--bg);
+}
+.welcome-hero {
+  position: relative;
+  min-height: 100dvh;
+  padding: 38px 42px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #fff;
+  background:
+    linear-gradient(180deg, #07142138 0%, #07142138 25%, #071421d9 100%),
+    url("/landscape.jpg") center/cover;
+}
+.welcome-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: Manrope, sans-serif;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: 0.015em;
+}
+.welcome-brand svg {
+  flex-shrink: 0;
+}
+.welcome-hero-copy {
+  margin: 60px 0 24px;
+  max-width: 450px;
+}
+.welcome-hero-copy > span {
+  display: block;
+  font-size: 10px;
+  font-weight: 550;
+  letter-spacing: 0.16em;
+  color: #d4e1eb;
+  margin-bottom: 17px;
+}
+.welcome-hero h1 {
+  font-family: Manrope, sans-serif;
+  font-size: clamp(36px, 3.6vw, 56px);
+  line-height: 1.17;
+  letter-spacing: -1.8px;
+  margin: 0 0 19px;
+  color: #fff;
+}
+.welcome-hero-copy > p {
+  color: #d4e1eb;
+  font-size: 14px;
+  line-height: 1.8;
+  max-width: 340px;
+  margin: 0;
+}
+.welcome-main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+  padding: 42px 45px;
+}
+.welcome-content {
+  width: 100%;
+  max-width: 480px;
+  min-width: 0;
+}
+.welcome-step-navigation {
+  display: flex;
+  gap: 9px;
+  margin: 0 0 21px;
+}
+.welcome-step-navigation button {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 12px 0;
+}
+.welcome-step-navigation button > span {
+  display: block;
+  height: 4px;
+  border-radius: 3px;
+  background: var(--line);
+}
+.welcome-step-navigation button[aria-current="step"] > span {
+  background: var(--purple);
+}
+.welcome-step-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 550;
+  letter-spacing: 0.1em;
+}
+.welcome-step-copy h2 {
+  font-family: Manrope, sans-serif;
+  font-size: clamp(25px, 2.5vw, 34px);
+  line-height: 1.3;
+  letter-spacing: -0.9px;
+  margin: 14px 0 15px;
+}
+.welcome-step-copy h2:focus {
+  outline: none;
+}
+.welcome-step-copy > p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin: 0 0 25px;
+}
+.welcome-features {
+  display: grid;
+  gap: 22px;
+  margin-top: 29px;
+}
+.welcome-features > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+.welcome-feature-icon {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  flex: 0 0 39px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--purple);
+  border-radius: 10px;
+}
+.welcome-features h3,
+.welcome-account-info h3 {
+  font-size: 14px;
+  font-weight: 550;
+  margin: 0 0 5px;
+  line-height: 1.6;
+}
+.welcome-features p,
+.welcome-account-info p {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--muted);
+  margin: 0;
+}
+.welcome-tier-example {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.welcome-tier-example header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 16px 17px;
+  border-bottom: 1px solid var(--line);
+}
+.welcome-tier-example header svg {
+  color: var(--muted);
+}
+.welcome-tier-example header strong {
+  font-size: 12px;
+  font-weight: 550;
+}
+.welcome-tier-example > div {
+  display: grid;
+  grid-template-columns: 29px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  padding: 15px 17px;
+}
+.welcome-tier-example > div + div {
+  border-top: 1px solid var(--line);
+}
+.welcome-tier-example .tier {
+  width: 29px;
+  height: 29px;
+  font-size: 10px;
+  border-radius: 8px;
+}
+.welcome-tier-example > div > strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.welcome-tier-example > div > span:last-child {
+  font-size: 10px;
+  color: var(--muted);
+}
+.welcome-step-copy .welcome-tier-note {
+  font-size: 11px;
+  margin: 14px 0 0;
+  line-height: 1.8;
+}
+.welcome-account-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+}
+.welcome-account-info > svg {
+  flex-shrink: 0;
+  color: var(--purple);
+  margin-top: 2px;
+}
+.welcome-account-info > div {
+  min-width: 0;
+}
+.welcome-account-info h3 {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.welcome-actions {
+  margin-top: 30px;
+}
+.welcome-navigation-actions {
+  display: flex;
+  gap: 11px;
+}
+.welcome-navigation-actions > .button:last-child {
+  flex: 1;
+}
+.welcome-actions .button {
+  min-height: 47px;
+  font-size: 13px;
+  padding: 12px 17px;
+  border-radius: 9px;
+}
+.welcome-primary,
+.welcome-actions .google-signin-button {
+  width: 100%;
+}
+.google-signin-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 12px 18px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f1f1f;
+  font-size: 14px;
+  font-weight: 550;
+  box-shadow: none;
+}
+.google-signin-button:hover:not(:disabled) {
+  background: #f5f8ff;
+  border-color: #b8c2d4;
+  color: #1f1f1f;
+}
+.google-signin-button svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.welcome-guest-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 5px;
+  margin-top: 9px;
+  font-size: 12px;
+  color: var(--text);
+}
+.welcome-device-note {
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--muted);
+  text-align: center;
+  margin: 2px 0 0;
+}
+.welcome-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 10px 0;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 17px;
+}
+.welcome-error {
+  margin: 19px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--red);
+}
+.welcome-offline {
+  margin: 14px 0 0;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.welcome-screen button:focus-visible,
+.google-signin-button:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 4px;
+}
+@media (max-width: 1100px) {
+  .welcome-hero {
+    padding: 32px;
+  }
+  .welcome-hero h1 {
+    font-size: 39px;
+  }
+  .welcome-main {
+    padding: 35px 30px;
+  }
+}
+@media (max-width: 760px) {
+  .welcome-screen {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .welcome-hero {
+    min-height: 0;
+    padding: 22px 24px 25px;
+    background-position: center 43%;
+  }
+  .welcome-brand {
+    font-size: 13px;
+  }
+  .welcome-hero-copy {
+    margin: 27px 0 0;
+    max-width: none;
+  }
+  .welcome-hero-copy > span {
+    font-size: 9px;
+    margin-bottom: 9px;
+  }
+  .welcome-hero h1 {
+    font-size: 29px;
+    line-height: 1.23;
+    letter-spacing: -0.9px;
+    margin-bottom: 0;
+  }
+  .welcome-hero-copy > p {
+    display: none;
+  }
+  .welcome-main {
+    align-items: flex-start;
+    padding: 18px 24px calc(25px + env(safe-area-inset-bottom));
+  }
+  .welcome-content {
+    max-width: 540px;
+  }
+  .welcome-step-navigation {
+    margin-bottom: 12px;
+  }
+  .welcome-step-navigation button {
+    height: 38px;
+    padding-block: 16px;
+  }
+  .welcome-step-copy h2 {
+    font-size: 25px;
+    margin-top: 11px;
+  }
+  .welcome-step-copy > p {
+    font-size: 13px;
+    margin-bottom: 21px;
+  }
+  .welcome-features {
+    gap: 18px;
+    margin-top: 23px;
+  }
+  .welcome-actions {
+    margin-top: 25px;
+  }
+}
+@media (max-width: 359px) {
+  .welcome-hero {
+    padding-inline: 18px;
+  }
+  .welcome-main {
+    padding-inline: 18px;
+  }
+  .welcome-hero h1 {
+    font-size: 26px;
+  }
+  .welcome-step-copy h2 {
+    font-size: 23px;
+  }
+  .welcome-tier-example > div {
+    padding-inline: 13px;
+    gap: 8px;
+  }
+  .welcome-tier-example > div > strong {
+    font-size: 12px;
+  }
+}
+/* First account setup: concise copy and actionable errors. */
+.name-setup > section {
+  width: min(100%, 460px);
+  padding: 27px;
+  border-radius: 14px;
+}
+.name-setup .brand {
+  margin-bottom: 24px;
+  font-size: 16px;
+}
+.name-setup h1 {
+  font-size: 27px;
+  line-height: 1.3;
+  letter-spacing: -0.6px;
+  margin: 0 0 10px;
+}
+.name-setup > section > p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 22px;
+}
+.name-setup .profile-name-form label {
+  font-size: 12px;
+}
+.name-setup .profile-name-form input {
+  min-height: 44px;
+  font-size: 14px;
+  padding: 11px 12px;
+}
+.name-setup .profile-name-form > .button {
+  width: 100%;
+  margin-top: 17px;
+  font-size: 13px;
+  min-height: 46px;
+}
+.name-setup .profile-name-form .inline-error {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.name-setup > section > .name-privacy-note {
+  font-size: 11px;
+  margin: 20px 0 9px;
+}
+.profile-save-error-details {
+  margin-top: 11px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.profile-save-error-details summary {
+  cursor: pointer;
+}
+.profile-save-error-details p {
+  font-size: 11px;
+  line-height: 1.7;
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+.compact-name-form .profile-save-error-details {
+  grid-column: 1 / -1;
+}
+@media (max-width: 600px) {
+  .name-setup {
+    padding: 20px 16px;
+  }
+  .name-setup > section {
+    padding: 23px 19px;
+  }
+  .name-setup h1 {
+    font-size: 25px;
+  }
+  .name-setup .profile-name-form input {
+    font-size: 16px;
+  }
+}

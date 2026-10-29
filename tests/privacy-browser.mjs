@@ -212,7 +212,7 @@ try {
     page = current.page;
   await expect(
     page.getByRole("heading", {
-      name: "What should we call you?",
+      name: "Set your app name",
       exact: true,
     }),
   ).toBeVisible();
@@ -231,9 +231,7 @@ try {
   await page
     .getByRole("textbox", { name: "Your app name", exact: true })
     .fill("email@example.test");
-  await page
-    .getByRole("button", { name: "Continue with this name", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("nickname, not an email");
   await env.withSecurityRulesDisabled(async (ctx) =>
     assert.equal(
@@ -244,9 +242,7 @@ try {
   await page
     .getByRole("textbox", { name: "Your app name", exact: true })
     .fill("Quiet fern");
-  await page
-    .getByRole("button", { name: "Continue with this name", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Settings", exact: true }),
   ).toBeVisible();
@@ -307,7 +303,7 @@ try {
   await current.signIn(legacy);
   await expect(
     page.getByRole("heading", {
-      name: "What should we call you?",
+      name: "Set your app name",
       exact: true,
     }),
   ).toBeVisible();
@@ -325,9 +321,7 @@ try {
   await page
     .getByRole("textbox", { name: "Your app name", exact: true })
     .fill("River stone");
-  await page
-    .getByRole("button", { name: "Continue with this name", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(
     page
       .locator(".settings-account-row strong")

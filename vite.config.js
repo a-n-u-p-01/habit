@@ -15,7 +15,7 @@ export default defineConfig({
       manifest: {
         name: "Win Today",
         short_name: "Win Today",
-        description: "Small wins. A better you.",
+        description: "Build daily habits and track your progress.",
         theme_color: "#0b1420",
         background_color: "#0b1420",
         display: "standalone",

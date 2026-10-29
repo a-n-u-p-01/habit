@@ -1,3 +1,5 @@
+import assert from "node:assert/strict";
+import { buildProfilePayload } from "../src/profile.js";
 import { test, before, after, beforeEach } from "node:test";
 import { readFileSync } from "node:fs";
 import {
@@ -17,6 +19,7 @@ import {
   query,
   where,
   updateDoc,
+  runTransaction,
 } from "firebase/firestore";
 import { exemplar } from "../src/domain.js";
 import { encodeFirestore } from "../src/serialization.js";
@@ -922,4 +925,54 @@ test("Profile join date is a server timestamp at creation and immutable afterwar
   await assertFails(
     updateDoc(doc(legacy, "users/alice"), { createdAt: serverTimestamp() }),
   );
+});
+
+test("Profile setup replaces unsupported legacy fields and preserves join date and private habits", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "users/alice"), {
+      displayName: "Old provider name",
+      nameConfirmed: false,
+      photoURL: "",
+      email: "legacy@example.test",
+      legacyFlag: true,
+      createdAt: serverTimestamp(),
+    });
+    await setDoc(doc(db, "users/alice/tasks/a"), task);
+  });
+  const db = env.authenticatedContext("alice").firestore();
+  const reference = doc(db, "users/alice");
+  const before = (await getDoc(reference)).data();
+  await assertFails(
+    setDoc(
+      reference,
+      {
+        displayName: "Quiet fern",
+        nameConfirmed: true,
+        photoURL: "",
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ),
+  );
+  await assertSucceeds(
+    runTransaction(db, async (transaction) => {
+      const existing = await transaction.get(reference);
+      transaction.set(
+        reference,
+        buildProfilePayload({
+          name: "Quiet fern",
+          photoURL: "",
+          existing: existing.data(),
+          timestamp: serverTimestamp(),
+        }),
+      );
+    }),
+  );
+  const after = (await getDoc(reference)).data();
+  assert.equal(after.displayName, "Quiet fern");
+  assert.equal(Object.hasOwn(after, "email"), false);
+  assert.equal(Object.hasOwn(after, "legacyFlag"), false);
+  assert.equal(after.createdAt.toMillis(), before.createdAt.toMillis());
+  assert.equal((await getDoc(doc(db, "users/alice/tasks/a"))).exists(), true);
 });
